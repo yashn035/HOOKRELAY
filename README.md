@@ -40,6 +40,8 @@ flowchart LR
     RenderWorker -->|SSRF Guard & HMAC-SHA256| Endpoints[External Subscriber Endpoints]
 ```
 
+On the free tier, the delivery worker runs embedded inside the API process. On paid tiers, it can be split into a dedicated Render Background Worker using the same Docker image with --spring.profiles.active=worker.
+
 ---
 
 ## Features
@@ -126,16 +128,16 @@ k6 run scripts/load-test.js
 
 ## Deployment
 
-### Render (Backend & Storage)
-1. Fork repository to GitHub.
-2. In Render Dashboard, click **New > Blueprint** and select `render.yaml`.
-3. Render automatically provisions the API web service, background worker service, PostgreSQL 16 database, and Redis instance.
-4. **Seed Demo Data (Optional)**: To seed the demo tenant in prod, set `HOOKRELAY_SEED_ENABLED=true` in Render's env vars for one deploy, then remove it.
-
-### Vercel (Frontend)
-1. Import repository on Vercel and set Root Directory to `web`.
-2. Add Environment Variable: `NEXT_PUBLIC_API_URL=https://<your-render-api>.onrender.com`.
-3. Deploy.
+1. Push to GitHub and confirm CI is green
+2. Render → New → Blueprint → connect repo → approve
+3. When prompted for CORS_ORIGINS, leave blank (fill later)
+4. Wait for hookrelay-api to show Healthy
+5. Copy the API URL from the Render dashboard
+6. Set HOOKRELAY_SEED_ENABLED=true on the API service, redeploy, then remove it
+7. Vercel → Import repo → Root Directory: web → env: NEXT_PUBLIC_API_URL=<render-api-url> → Deploy
+8. On Render, set CORS_ORIGINS to the Vercel URL and redeploy the API
+9. Update the cron (or add one from the dashboard) with the real API URL
+10. Run: bash scripts/smoke-test.sh <render-api-url>
 
 ---
 
