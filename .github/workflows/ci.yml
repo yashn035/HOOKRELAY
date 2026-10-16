@@ -23,10 +23,17 @@ jobs:
           cache: 'maven'
 
       - name: Run Maven Tests & Verify (JaCoCo + Testcontainers)
-        run: mvn clean verify -B
+        run: mvn -B clean verify
+
+      - name: Upload JaCoCo Coverage Report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: jacoco-coverage-report
+          path: core/target/site/jacoco/
 
       - name: Build Backend Docker Image
-        run: docker build -t hookrelay/backend:latest .
+        run: docker build -t hookrelay:ci .
 
   frontend-build:
     name: Frontend Build (Next.js 14)
