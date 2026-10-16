@@ -99,8 +99,9 @@ docker compose up --build
 mvn clean verify
 ```
 
-- **Coverage**: **81.1% line coverage** on `core` module (enforced via 70% JaCoCo build gate).
-- **Testcontainers E2E**: Boots PostgreSQL 16 + Redis 7 + WireMock in Docker (`PipelineE2ETest.java`), verifying event ingest, rate limiting, skip-locked lease dispatch, HMAC signature matching, idempotency deduplication, and replay.
+- **Test Suite**: **63 automated tests** across `core` (42), `worker` (3), and `api` (18) modules, passing with 0 failures.
+- **Coverage**: **75.6% line coverage** (245/324 lines covered, 74% instructions) on `core` module (enforced via 70% JaCoCo build gate).
+- **Testcontainers & WireMock E2E**: Full pipeline testing in `PipelineE2ETest.java` and `DeliveryDispatcherWireMockTest.java`, verifying event ingest, rate limiting, skip-locked lease dispatch, JSONPath transformed payload HMAC signature verification, idempotency deduplication, and replay.
 
 ---
 
