@@ -97,6 +97,7 @@ public class AuthService {
         return new AuthResponse(token, refreshToken, summary, savedProject.getId());
     }
 
+    @Transactional(readOnly = true)
     public AuthResponse login(LoginRequest req) {
         String email = req.email().toLowerCase(Locale.ROOT).trim();
         User user = userRepository.findByEmail(email)

@@ -31,6 +31,7 @@ public class Event {
     @Column(name = "id", nullable = false, updatable = false)
     private UUID id;
 
+    @com.fasterxml.jackson.annotation.JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "project_id", nullable = false)
     private Project project;
