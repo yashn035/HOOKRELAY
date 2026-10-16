@@ -31,7 +31,7 @@ public class SecurityConfig {
 
     private final UnifiedAuthFilter unifiedAuthFilter;
 
-    @Value("${hookrelay.cors.allowed-origins:http://localhost:3000,http://localhost:3001,https://*.vercel.app}")
+    @Value("${CORS_ORIGINS:${hookrelay.cors.allowed-origins:http://localhost:3000,http://localhost:3001,https://*.vercel.app}}")
     private String allowedOrigins;
 
     public SecurityConfig(UnifiedAuthFilter unifiedAuthFilter) {
