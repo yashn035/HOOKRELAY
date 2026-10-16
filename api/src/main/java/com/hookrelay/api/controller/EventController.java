@@ -25,6 +25,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
 
+@RequiredArgsConstructor
 @RestController
 @RequestMapping("/api/v1")
 @Tag(name = "Events", description = "High-throughput event ingestion and event history")
@@ -34,15 +35,6 @@ public class EventController {
     private final EventRepository eventRepository;
     private final ProjectService projectService;
 
-    public EventController(
-            EventIngestService eventIngestService,
-            EventRepository eventRepository,
-            ProjectService projectService
-    ) {
-        this.eventIngestService = eventIngestService;
-        this.eventRepository = eventRepository;
-        this.projectService = projectService;
-    }
 
     @PostMapping("/events")
     @Operation(

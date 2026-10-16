@@ -30,7 +30,6 @@ public class DeliveryDispatcher {
     private static final Duration TIMEOUT = Duration.ofSeconds(10);
     private static final int MAX_RESPONSE_BODY_LENGTH = 4096;
 
-    @org.springframework.beans.factory.annotation.Autowired
     public DeliveryDispatcher(
             HmacSignatureService hmacSignatureService,
             SsrfProtectionService ssrfProtectionService,
@@ -44,13 +43,6 @@ public class DeliveryDispatcher {
                 .connectTimeout(Duration.ofSeconds(5))
                 .followRedirects(HttpClient.Redirect.NEVER) // Prevent SSRF redirect hijacking
                 .build();
-    }
-
-    public DeliveryDispatcher(
-            HmacSignatureService hmacSignatureService,
-            SsrfProtectionService ssrfProtectionService
-    ) {
-        this(hmacSignatureService, ssrfProtectionService, new PayloadTransformService(new com.fasterxml.jackson.databind.ObjectMapper()));
     }
 
     public record DispatchResult(

@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.UUID;
 
+@RequiredArgsConstructor
 @RestController
 @RequestMapping("/api/v1/projects")
 @PreAuthorize("hasRole('USER')")
@@ -24,9 +25,6 @@ public class ProjectController {
 
     private final ProjectService projectService;
 
-    public ProjectController(ProjectService projectService) {
-        this.projectService = projectService;
-    }
 
     @GetMapping
     @Operation(summary = "List all projects in the current user's organization")

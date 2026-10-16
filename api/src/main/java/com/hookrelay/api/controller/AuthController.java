@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 
+@RequiredArgsConstructor
 @RestController
 @RequestMapping("/api/v1/auth")
 @Tag(name = "Authentication", description = "User registration, session tokens, and identity management")
@@ -21,9 +22,6 @@ public class AuthController {
 
     private final AuthService authService;
 
-    public AuthController(AuthService authService) {
-        this.authService = authService;
-    }
 
     @PostMapping("/signup")
     @Operation(summary = "Register new account, organization, and default project")

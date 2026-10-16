@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
 
+@RequiredArgsConstructor
 @RestController
 @RequestMapping("/api/v1/projects/{projectId}/deliveries")
 @PreAuthorize("hasRole('USER')")
@@ -22,9 +23,6 @@ public class DeliveryController {
 
     private final DeliveryService deliveryService;
 
-    public DeliveryController(DeliveryService deliveryService) {
-        this.deliveryService = deliveryService;
-    }
 
     @GetMapping
     @Operation(summary = "List deliveries with status filtering and pagination")

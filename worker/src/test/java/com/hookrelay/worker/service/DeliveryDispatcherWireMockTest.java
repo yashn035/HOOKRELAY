@@ -8,6 +8,8 @@ import com.hookrelay.core.entity.Event;
 import com.hookrelay.core.entity.Project;
 import com.hookrelay.core.service.HmacSignatureService;
 import com.hookrelay.core.service.SsrfProtectionService;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.hookrelay.core.service.PayloadTransformService;
 import com.hookrelay.worker.service.DeliveryDispatcher.DispatchResult;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -39,7 +41,7 @@ class DeliveryDispatcherWireMockTest {
         ReflectionTestUtils.setField(ssrfService, "enforceHttps", false);
         ReflectionTestUtils.setField(ssrfService, "blockPrivateIps", false);
 
-        dispatcher = new DeliveryDispatcher(hmacSignatureService, ssrfService);
+        dispatcher = new DeliveryDispatcher(hmacSignatureService, ssrfService, new PayloadTransformService(new ObjectMapper()));
     }
 
     @AfterAll

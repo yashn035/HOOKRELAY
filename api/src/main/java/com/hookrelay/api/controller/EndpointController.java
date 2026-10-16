@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.UUID;
 
+@RequiredArgsConstructor
 @RestController
 @RequestMapping("/api/v1/projects/{projectId}/endpoints")
 @PreAuthorize("hasRole('USER')")
@@ -24,9 +25,6 @@ public class EndpointController {
 
     private final EndpointService endpointService;
 
-    public EndpointController(EndpointService endpointService) {
-        this.endpointService = endpointService;
-    }
 
     @GetMapping
     @Operation(summary = "List all webhook subscriber endpoints for a project")

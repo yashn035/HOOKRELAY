@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.UUID;
 
+@RequiredArgsConstructor
 @RestController
 @RequestMapping("/api/v1/projects/{projectId}/api-keys")
 @PreAuthorize("hasRole('USER')")
@@ -28,10 +29,6 @@ public class ApiKeyController {
     private final ApiKeyService apiKeyService;
     private final ProjectService projectService;
 
-    public ApiKeyController(ApiKeyService apiKeyService, ProjectService projectService) {
-        this.apiKeyService = apiKeyService;
-        this.projectService = projectService;
-    }
 
     @GetMapping
     @Operation(summary = "List all API keys for a project")
