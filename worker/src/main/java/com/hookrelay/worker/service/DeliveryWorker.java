@@ -6,6 +6,7 @@ import com.hookrelay.core.repository.DeliveryAttemptRepository;
 import com.hookrelay.core.repository.DeliveryRepository;
 import com.hookrelay.core.repository.EndpointRepository;
 import com.hookrelay.core.service.BackoffCalculator;
+import com.hookrelay.core.service.HookRelayMetricsService;
 import com.hookrelay.worker.service.DeliveryDispatcher.DispatchResult;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
@@ -35,6 +36,7 @@ public class DeliveryWorker {
     private final DeadLetterRepository deadLetterRepository;
     private final DeliveryDispatcher deliveryDispatcher;
     private final BackoffCalculator backoffCalculator;
+    private final HookRelayMetricsService metricsService;
 
     @Value("${hookrelay.worker.batch-size:50}")
     private int batchSize;
@@ -52,7 +54,8 @@ public class DeliveryWorker {
             EndpointRepository endpointRepository,
             DeadLetterRepository deadLetterRepository,
             DeliveryDispatcher deliveryDispatcher,
-            BackoffCalculator backoffCalculator
+            BackoffCalculator backoffCalculator,
+            HookRelayMetricsService metricsService
     ) {
         this.deliveryRepository = deliveryRepository;
         this.deliveryAttemptRepository = deliveryAttemptRepository;
@@ -60,6 +63,7 @@ public class DeliveryWorker {
         this.deadLetterRepository = deadLetterRepository;
         this.deliveryDispatcher = deliveryDispatcher;
         this.backoffCalculator = backoffCalculator;
+        this.metricsService = metricsService;
         this.workerId = "worker-" + UUID.randomUUID().toString().substring(0, 8);
     }
 
@@ -176,6 +180,12 @@ public class DeliveryWorker {
                 .executedAt(Instant.now())
                 .build();
         deliveryAttemptRepository.save(attempt);
+
+        if (metricsService != null) {
+            String status = result.successful() ? "SUCCEEDED" : "FAILED";
+            metricsService.recordDeliveryAttempt(status);
+            metricsService.recordDeliveryLatency(endpoint.getId(), result.latencyMs());
+        }
 
         Instant now = Instant.now();
         delivery.setLockedBy(null);

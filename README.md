@@ -94,12 +94,17 @@ flowchart TD
 
 ---
 
-## 🛠️ Technology Stack
+## 📊 Metrics & Observability
 
-- **Backend**: Java 21, Spring Boot 3.3.4, Spring Security, Spring Data JPA / Hibernate, Flyway, PostgreSQL 16, Redis 7, Micrometer, HikariCP.
-- **Frontend (`/web`)**: Next.js 14 (App Router), TypeScript, Tailwind CSS, Recharts, Lucide Icons.
-- **Testing**: JUnit 5, Mockito, WireMock Standalone.
-- **Deployment**: Docker, Docker Compose, Render (API + Background Worker + Postgres + Redis), Vercel.
+HookRelay exposes production metrics at `/actuator/prometheus` via Micrometer. An enterprise Grafana dashboard definition is included at [`ops/grafana-dashboard.json`](ops/grafana-dashboard.json).
+
+| Metric Name | Type | Tags | Description |
+| :--- | :--- | :--- | :--- |
+| `hookrelay.events.ingested` | Counter | `tenant_id` | Total number of published webhook events received |
+| `hookrelay.deliveries.attempted` | Counter | `status` (`SUCCEEDED`, `FAILED`) | Outbound HTTP webhook delivery dispatches |
+| `hookrelay.delivery.latency` | Timer | `endpoint_id` | HTTP round-trip dispatch latency in milliseconds |
+| `hookrelay.deliveries.queue_depth` | Gauge | — | Live count of `PENDING` delivery tasks in PostgreSQL queue |
+| `hookrelay.rate_limit.rejected` | Counter | `tenant_id` | Events rejected due to tenant quota saturation (`429`) |
 
 ---
 

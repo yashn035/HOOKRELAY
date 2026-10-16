@@ -44,6 +44,8 @@ class EventIngestServiceTest {
     private RateLimitService rateLimitService;
     @Mock
     private IdempotencyService idempotencyService;
+    @Mock
+    private com.hookrelay.core.service.HookRelayMetricsService metricsService;
     @Spy
     private ObjectMapper objectMapper = new ObjectMapper();
 

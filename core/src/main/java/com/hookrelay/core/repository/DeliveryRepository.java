@@ -18,6 +18,8 @@ import java.util.UUID;
 @Repository
 public interface DeliveryRepository extends JpaRepository<Delivery, UUID> {
 
+    long countByStatus(DeliveryStatus status);
+
     @Query(value = """
         SELECT d.id FROM deliveries d
         WHERE (d.status = 'PENDING' OR (d.status = 'PROCESSING' AND d.locked_until < :now))

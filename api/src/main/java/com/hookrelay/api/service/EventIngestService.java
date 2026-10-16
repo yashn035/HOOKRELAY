@@ -11,6 +11,7 @@ import com.hookrelay.core.entity.Project;
 import com.hookrelay.core.repository.DeliveryRepository;
 import com.hookrelay.core.repository.EndpointRepository;
 import com.hookrelay.core.repository.EventRepository;
+import com.hookrelay.core.service.HookRelayMetricsService;
 import com.hookrelay.core.service.IdempotencyService;
 import com.hookrelay.core.service.RateLimitResult;
 import com.hookrelay.core.service.RateLimitService;
@@ -28,7 +29,6 @@ import java.util.UUID;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class EventIngestService {
 
     private final EventRepository eventRepository;
@@ -37,6 +37,25 @@ public class EventIngestService {
     private final RateLimitService rateLimitService;
     private final IdempotencyService idempotencyService;
     private final ObjectMapper objectMapper;
+    private final HookRelayMetricsService metricsService;
+
+    public EventIngestService(
+            EventRepository eventRepository,
+            DeliveryRepository deliveryRepository,
+            EndpointRepository endpointRepository,
+            RateLimitService rateLimitService,
+            IdempotencyService idempotencyService,
+            ObjectMapper objectMapper,
+            HookRelayMetricsService metricsService
+    ) {
+        this.eventRepository = eventRepository;
+        this.deliveryRepository = deliveryRepository;
+        this.endpointRepository = endpointRepository;
+        this.rateLimitService = rateLimitService;
+        this.idempotencyService = idempotencyService;
+        this.objectMapper = objectMapper;
+        this.metricsService = metricsService;
+    }
 
     @Transactional
     public IngestEventResponse ingestEvent(Project project, IngestEventRequest req, String headerIdempotencyKey) {
@@ -44,6 +63,9 @@ public class EventIngestService {
         int rateLimit = project.getRateLimitPerSecond();
         RateLimitResult rateLimitResult = rateLimitService.checkRateLimit(project.getId(), rateLimit);
         if (!rateLimitResult.allowed()) {
+            if (metricsService != null) {
+                metricsService.recordRateLimitRejected(project.getId());
+            }
             throw new RateLimitExceededException(rateLimitResult);
         }
 
@@ -123,6 +145,10 @@ public class EventIngestService {
 
         if (!deliveries.isEmpty()) {
             deliveryRepository.saveAll(deliveries);
+        }
+
+        if (metricsService != null) {
+            metricsService.recordEventIngested(project.getId());
         }
 
         log.info("Ingested event id={}, type={}, fanout_deliveries={}", savedEvent.getId(), savedEvent.getType(), deliveries.size());
