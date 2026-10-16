@@ -141,4 +141,69 @@ class DeliveryDispatcherWireMockTest {
         assertEquals(500, result.httpStatusCode());
         assertTrue(result.errorMessage().contains("500"));
     }
+
+    @Test
+    @DisplayName("Should prove signature covers transformed body before HTTP dispatch")
+    void signatureCoversTransformedBody() {
+        String endpointPath = "/transformed-webhook";
+        stubFor(post(urlEqualTo(endpointPath))
+                .willReturn(aResponse()
+                        .withStatus(200)
+                        .withBody("{\"status\":\"ok\"}")));
+
+        String secret = "whsec_transform_test_secret_998877";
+        Project project = Project.builder().name("Test Project").build();
+        project.setId(UUID.randomUUID());
+
+        Endpoint endpoint = Endpoint.builder()
+                .project(project)
+                .name("Transform Endpoint")
+                .url("http://localhost:" + wireMockServer.port() + endpointPath)
+                .secret(secret)
+                .transformRules("{\"id\":\"$.data.orderId\"}")
+                .build();
+        endpoint.setId(UUID.randomUUID());
+
+        Event event = Event.builder()
+                .project(project)
+                .type("order.created")
+                .data("{\"data\":{\"orderId\":\"ord_42\"}}")
+                .build();
+        event.setId(UUID.randomUUID());
+
+        Delivery delivery = Delivery.builder()
+                .project(project)
+                .endpoint(endpoint)
+                .event(event)
+                .build();
+        delivery.setId(UUID.randomUUID());
+
+        DispatchResult result = dispatcher.dispatch(delivery);
+
+        assertTrue(result.successful());
+        assertEquals(200, result.httpStatusCode());
+
+        // 1. Assert WireMock received the TRANSFORMED body {"id":"ord_42"} (not raw payload)
+        var postRequests = wireMockServer.findAll(postRequestedFor(urlEqualTo(endpointPath)));
+        assertFalse(postRequests.isEmpty(), "WireMock should have recorded at least one request");
+        var recordedRequest = postRequests.get(postRequests.size() - 1);
+        String receivedBody = recordedRequest.getBodyAsString();
+        assertEquals("{\"id\":\"ord_42\"}", receivedBody);
+
+        // 2. Assert header X-HookRelay-Signature verifies against the TRANSFORMED body
+        String signatureHeader = recordedRequest.getHeader(HmacSignatureService.SIGNATURE_HEADER);
+        assertNotNull(signatureHeader);
+        assertTrue(signatureHeader.startsWith("t="));
+        assertTrue(signatureHeader.contains(",v1="));
+
+        // Extract timestamp from header and verify signature against TRANSFORMED body
+        String[] parts = signatureHeader.split(",");
+        long timestamp = Long.parseLong(parts[0].substring(2));
+        boolean verified = hmacSignatureService.verify(receivedBody, signatureHeader, secret, 300);
+        assertTrue(verified, "Signature header must cryptographically verify against the transformed body");
+
+        // Verify that verifying against the UNTRANSFORMED body fails
+        boolean rawVerified = hmacSignatureService.verify(event.getData(), signatureHeader, secret, 300);
+        assertFalse(rawVerified, "Signature header must NOT verify against untransformed raw body");
+    }
 }
