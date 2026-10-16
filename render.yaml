@@ -16,7 +16,7 @@ services:
           property: connectionString
       - key: REDIS_URL
         fromService:
-          type: redis
+          type: keyvalue
           name: hookrelay-redis
           property: connectionString
       - key: JWT_SECRET
@@ -34,17 +34,6 @@ services:
       - key: HOOKRELAY_WORKER_THREADS
         value: "10"
 
-  # 2. Render Cron Job to Keep Free Instances Warm
-  - type: cron
-    name: hookrelay-keepwarm
-    schedule: "*/10 * * * *"
-    command: curl -s -f $KEEPWARM_URL/actuator/health || true
-    plan: free
-    region: oregon
-    envVars:
-      - key: KEEPWARM_URL
-        sync: false
-
 databases:
   - name: hookrelay-postgres
     databaseName: hookrelay
@@ -53,9 +42,8 @@ databases:
     region: oregon
     postgresMajorVersion: 16
 
-# Redis Key-Value Store on Render
-redis:
+# Key-Value Store on Render
+keyValue:
   - name: hookrelay-redis
     plan: free
     region: oregon
-    ipAllowList: [] # internal access only

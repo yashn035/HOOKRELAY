@@ -51,6 +51,7 @@ services:
       HOOKRELAY_ENFORCE_HTTPS: "false" # Local docker dev
       HOOKRELAY_BLOCK_PRIVATE_IPS: "false" # Local docker dev
       HOOKRELAY_WORKER_ENABLED: "false" # Let dedicated worker container handle queue
+      HOOKRELAY_SEED_ENABLED: "true"
       CORS_ORIGINS: http://localhost:3000,http://localhost:3001
     ports:
       - "8080:8080"
