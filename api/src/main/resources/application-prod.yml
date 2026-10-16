@@ -1,0 +1,32 @@
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:${DATABASE_URL}}
+    username: ${SPRING_DATASOURCE_USERNAME:${DATABASE_USERNAME:postgres}}
+    password: ${SPRING_DATASOURCE_PASSWORD:${DATABASE_PASSWORD:postgres}}
+
+logging:
+  level:
+    root: INFO
+    com.hookrelay: INFO
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,prometheus,info
+
+hookrelay:
+  worker:
+    enabled: false
+  cors:
+    allowed-origins: ${CORS_ORIGINS:https://*.vercel.app}
+  security:
+    enforce-https: ${HOOKRELAY_ENFORCE_HTTPS:true}
+    block-private-ips: ${HOOKRELAY_BLOCK_PRIVATE_IPS:true}
+  seed:
+    enabled: ${HOOKRELAY_SEED_ENABLED:false}

@@ -1,0 +1,9 @@
+spring:
+  main:
+    web-application-type: none
+
+hookrelay:
+  worker:
+    enabled: true
+    threads: ${HOOKRELAY_WORKER_THREADS:20}
+    poll-delay-ms: ${HOOKRELAY_WORKER_POLL_DELAY_MS:1000}
