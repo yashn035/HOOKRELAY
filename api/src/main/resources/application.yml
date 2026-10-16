@@ -1,0 +1,127 @@
+server:
+  port: ${PORT:8080}
+  shutdown: graceful
+
+spring:
+  application:
+    name: hookrelay
+  lifecycle:
+    timeout-per-shutdown-phase: 15s
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:${DATABASE_URL:jdbc:postgresql://localhost:5432/hookrelay}}
+    username: ${SPRING_DATASOURCE_USERNAME:${DATABASE_USERNAME:postgres}}
+    password: ${SPRING_DATASOURCE_PASSWORD:${DATABASE_PASSWORD:postgres}}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 20000
+      idle-timeout: 300000
+      max-lifetime: 1200000
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        jdbc:
+          batch_size: 50
+        order_inserts: true
+        order_updates: true
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    locations: classpath:db/migration
+  data:
+    redis:
+      url: ${REDIS_URL:redis://localhost:6379}
+      timeout: 2000ms
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operationsSorter: method
+
+hookrelay:
+  jwt:
+    secret: ${JWT_SECRET:hookrelay-ultra-secure-jwt-secret-key-32-bytes-minimum-must-be-replaced-in-prod!}
+    expiration-ms: 86400000 # 24 hours
+    refresh-expiration-ms: 604800000 # 7 days
+  cors:
+    allowed-origins: ${CORS_ORIGINS:http://localhost:3000,http://localhost:3001,https://*.vercel.app}
+  security:
+    enforce-https: ${HOOKRELAY_ENFORCE_HTTPS:false} # Set to true in prod, false for localhost / test
+    block-private-ips: ${HOOKRELAY_BLOCK_PRIVATE_IPS:false} # Set to true in prod, false for localhost / test
+  worker:
+    enabled: ${HOOKRELAY_WORKER_ENABLED:true}
+    poll-delay-ms: ${HOOKRELAY_WORKER_POLL_DELAY_MS:2000}
+    batch-size: ${HOOKRELAY_WORKER_BATCH_SIZE:50}
+    threads: ${HOOKRELAY_WORKER_THREADS:10}
+
+---
+spring:
+  config:
+    activate:
+      on-profile: prod
+hookrelay:
+  security:
+    enforce-https: true
+    block-private-ips: true
+
+---
+spring:
+  config:
+    activate:
+      on-profile: worker
+server:
+  port: 0
+hookrelay:
+  worker:
+    enabled: true
+
+---
+spring:
+  config:
+    activate:
+      on-profile: test
+spring:
+  datasource:
+    url: jdbc:h2:mem:hookrelay;DB_CLOSE_DELAY=-1;MODE=PostgreSQL
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+  flyway:
+    enabled: false
+  data:
+    redis:
+      repositories:
+        enabled: false
+hookrelay:
+  security:
+    enforce-https: false
+    block-private-ips: false
+  worker:
+    enabled: false
