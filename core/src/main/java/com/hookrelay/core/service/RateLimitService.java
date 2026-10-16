@@ -49,7 +49,8 @@ public class RateLimitService {
                 int remaining = (int) Math.max(0, limitPerSecond - (currentCount != null ? currentCount : 0));
                 return new RateLimitResult(true, limitPerSecond, remaining, 0);
             } catch (Exception e) {
-                log.warn("Redis rate limiter unavailable, falling back to local window: {}", e.getMessage());
+                log.warn("Redis rate limiter unavailable, failing open: {}", e.getMessage());
+                return new RateLimitResult(true, limitPerSecond, limitPerSecond, 0);
             }
         }
 
