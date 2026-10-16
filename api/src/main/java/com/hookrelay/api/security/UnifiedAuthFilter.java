@@ -24,12 +24,18 @@ import java.util.UUID;
 
 @Slf4j
 @Component
-@RequiredArgsConstructor
 public class UnifiedAuthFilter extends OncePerRequestFilter {
 
     private final JwtTokenProvider jwtTokenProvider;
     private final UserRepository userRepository;
     private final ApiKeyService apiKeyService;
+
+    public UnifiedAuthFilter(JwtTokenProvider jwtTokenProvider, UserRepository userRepository, ApiKeyService apiKeyService) {
+        super();
+        this.jwtTokenProvider = jwtTokenProvider;
+        this.userRepository = userRepository;
+        this.apiKeyService = apiKeyService;
+    }
 
     @Override
     protected void doFilterInternal(

@@ -27,7 +27,6 @@ import java.util.concurrent.*;
 @Slf4j
 @Service
 @ConditionalOnProperty(name = "hookrelay.worker.enabled", havingValue = "true", matchIfMissing = true)
-@RequiredArgsConstructor
 public class DeliveryWorker {
 
     private final DeliveryRepository deliveryRepository;
@@ -44,8 +43,25 @@ public class DeliveryWorker {
     private int threadCount;
 
     private ExecutorService threadPool;
-    private final String workerId = "worker-" + UUID.randomUUID().toString().substring(0, 8);
+    private final String workerId;
     private volatile boolean isRunning = true;
+
+    public DeliveryWorker(
+            DeliveryRepository deliveryRepository,
+            DeliveryAttemptRepository deliveryAttemptRepository,
+            EndpointRepository endpointRepository,
+            DeadLetterRepository deadLetterRepository,
+            DeliveryDispatcher deliveryDispatcher,
+            BackoffCalculator backoffCalculator
+    ) {
+        this.deliveryRepository = deliveryRepository;
+        this.deliveryAttemptRepository = deliveryAttemptRepository;
+        this.endpointRepository = endpointRepository;
+        this.deadLetterRepository = deadLetterRepository;
+        this.deliveryDispatcher = deliveryDispatcher;
+        this.backoffCalculator = backoffCalculator;
+        this.workerId = "worker-" + UUID.randomUUID().toString().substring(0, 8);
+    }
 
     @PostConstruct
     public void init() {
@@ -86,6 +102,19 @@ public class DeliveryWorker {
             }
         } catch (Exception ex) {
             log.error("Worker poll loop encountered error: {}", ex.getMessage(), ex);
+        }
+    }
+
+    /**
+     * Executes one synchronous processing tick (claiming pending deliveries and executing them directly on the calling thread).
+     * Useful for deterministic testing and manual processing sweeps.
+     */
+    public void runOnce() {
+        List<UUID> deliveryIds = claimBatch();
+        if (deliveryIds != null) {
+            for (UUID deliveryId : deliveryIds) {
+                executeDeliveryTransaction(deliveryId);
+            }
         }
     }
 
