@@ -236,4 +236,77 @@ class PipelineE2ETest {
         assertEquals(2, attemptsAfterReplay.get(1).getAttemptNumber());
         assertEquals(200, attemptsAfterReplay.get(1).getResponseStatus());
     }
+
+    @Test
+    @DisplayName("E2E Pipeline with Transform: Ingest Event -> Apply JSONPath -> WireMock Dispatch -> Verify Transformed Body & HMAC Signature")
+    void transformedDeliverySignatureVerifies() throws Exception {
+        String endpointPath = "/webhook-transformed-e2e";
+        stubFor(post(urlEqualTo(endpointPath))
+                .willReturn(aResponse()
+                        .withStatus(200)
+                        .withHeader("Content-Type", "application/json")
+                        .withBody("{\"received\": true}")));
+
+        // 1. Create Org, Project, and Endpoint with transformRules pointing at WireMock
+        Org org = orgRepository.save(Org.builder()
+                .name("Transform Org " + UUID.randomUUID())
+                .slug("transform-org-" + UUID.randomUUID())
+                .build());
+
+        Project project = projectRepository.save(Project.builder()
+                .org(org)
+                .name("Transform Project")
+                .rateLimitPerSecond(500)
+                .build());
+
+        String webhookSecret = "whsec_e2e_transform_secret_554433";
+        Endpoint endpoint = endpointRepository.save(Endpoint.builder()
+                .project(project)
+                .name("Wiremock Transformed Consumer")
+                .url("http://localhost:" + wireMockServer.port() + endpointPath)
+                .secret(webhookSecret)
+                .eventTypesFilter(List.of("payment.completed"))
+                .active(true)
+                .transformRules("{\"payment_id\":\"$.data.paymentId\",\"formatted_amount\":\"$.data.amount | number:'0.00'\"}")
+                .build());
+
+        // 2. Ingest event with raw nested payload
+        String rawPayload = "{\"data\":{\"paymentId\":\"pay_9988\",\"amount\":125.5}}";
+        IngestEventRequest ingestReq = new IngestEventRequest(
+                "payment.completed",
+                objectMapper.readTree(rawPayload),
+                "idem_transform_" + UUID.randomUUID()
+        );
+
+        IngestEventResponse ingestRes = eventIngestService.ingestEvent(project, ingestReq, null);
+        assertNotNull(ingestRes);
+        assertEquals(1, ingestRes.deliveriesCreated());
+
+        Delivery delivery = deliveryRepository.findAll().stream()
+                .filter(d -> d.getEvent().getId().equals(ingestRes.eventId()))
+                .findFirst().orElseThrow();
+
+        // 3. Run worker synchronously for this delivery
+        deliveryWorker.executeDeliveryTransaction(delivery.getId());
+
+        // 4. Assert:
+        // - WireMock received exactly one POST
+        var postRequests = wireMockServer.findAll(postRequestedFor(urlEqualTo(endpointPath)));
+        assertFalse(postRequests.isEmpty(), "WireMock should have recorded the delivery");
+        var recordedRequest = postRequests.get(postRequests.size() - 1);
+
+        // - WireMock received the TRANSFORMED body (not the raw payload)
+        String receivedBody = recordedRequest.getBodyAsString();
+        assertEquals("{\"payment_id\":\"pay_9988\",\"formatted_amount\":\"125.50\"}", receivedBody);
+
+        // - Signature header validates against TRANSFORMED body
+        String signatureHeader = recordedRequest.getHeader(HmacSignatureService.SIGNATURE_HEADER);
+        assertNotNull(signatureHeader);
+        boolean signatureValid = hmacSignatureService.verify(receivedBody, signatureHeader, webhookSecret, 300);
+        assertTrue(signatureValid, "Signature MUST verify against the transformed body");
+
+        // - Delivery status marked SUCCEEDED
+        Delivery completedDelivery = deliveryRepository.findById(delivery.getId()).orElseThrow();
+        assertEquals(DeliveryStatus.SUCCEEDED, completedDelivery.getStatus());
+    }
 }
