@@ -27,13 +27,16 @@ import java.util.List;
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
-@RequiredArgsConstructor
 public class SecurityConfig {
 
     private final UnifiedAuthFilter unifiedAuthFilter;
 
     @Value("${hookrelay.cors.allowed-origins:http://localhost:3000,http://localhost:3001,https://*.vercel.app}")
     private String allowedOrigins;
+
+    public SecurityConfig(UnifiedAuthFilter unifiedAuthFilter) {
+        this.unifiedAuthFilter = unifiedAuthFilter;
+    }
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {

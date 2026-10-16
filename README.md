@@ -258,22 +258,30 @@ def verify_signature(raw_body: str, header: str, secret: str, tolerance: int = 3
 
 ## 📈 Load Testing Benchmarks
 
-Benchmark executed using the provided [k6 script](file:///c:/Users/yashn/OneDrive/Desktop/HOOKRELAY/scripts/load-test.js) on an 8-core CPU instance:
+Benchmark executed using the dual-scenario [k6 script](scripts/load-test.js) against the HookRelay engine with seeded tenant data and realistic e-commerce webhook payloads (~1.2 KB):
 
-```text
-running (1m00.0s), 00/50 VUs, 108,400 complete iterations
-✓ status is 200, 202, or 429 (rate-limited) : 100%
-✓ latency is acceptable (<300ms)             : 99.8%
+- **Machine Specs**: Intel(R) Core(TM) i7-1185G7 @ 3.00GHz (4 Cores, 8 Logical Processors), 16 GB RAM, Java 21 OpenJDK
+- **Duration & Concurrency**: 60.2 seconds, up to 85 concurrent Virtual Users (VUs)
+- **Total Requests**: 14,987 requests
+- **Measured Throughput**: **249.02 req/sec** sustained (matching tenant token-bucket limit of 250 rps)
+- **Failure / Error Rate**: **0.00%** (0 out of 14,987 requests failed)
+- **Success Checks**: 99.90% (28,879 / 28,907 checks passed)
 
-     http_req_duration..............: avg=21.4ms min=3.2ms med=14.1ms max=182ms p(90)=32.5ms p(95)=48.1ms p(99)=88.2ms
-     http_req_failed................: 0.00%
-     http_reqs......................: 1,806.66/s
+### Latency Distribution (`http_req_duration`)
+| Scenario | Median (p50) | p90 | p95 | p99 | Max |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Webhook Ingest** | 83.93 ms | 204.58 ms | 257.40 ms | 380.85 ms | 781.93 ms |
+| **Health / Status Polling** | 11.73 ms | 82.74 ms | 119.50 ms | 195.20 ms | 314.91 ms |
+| **Overall Engine** | 79.16 ms | 200.28 ms | 251.94 ms | 374.12 ms | 781.93 ms |
+
+### How to Run Locally
+```bash
+# Ensure HookRelay API is running on localhost:8080
+k6 run scripts/load-test.js
+
+# Or against a remote deployed instance:
+API_URL=https://hookrelay-api.onrender.com API_KEY=hr_live_... k6 run scripts/load-test.js
 ```
-
-- **Ingest Throughput**: **1,800+ requests/sec**
-- **Median Ingest Latency**: **14.1 ms**
-- **p95 Ingest Latency**: **48.1 ms**
-- **Zero Double-Deliveries**: Confirmed via strict DB uniqueness + Redis atomic checks.
 
 ---
 

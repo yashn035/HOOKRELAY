@@ -20,8 +20,9 @@ import java.util.concurrent.ThreadLocalRandom;
 
 @Slf4j
 @Component
-@RequiredArgsConstructor
 public class DemoDataSeeder implements CommandLineRunner {
+
+    public static final String DEMO_API_KEY = "hr_live_demo_acme_production_key_001";
 
     private final OrgRepository orgRepository;
     private final UserRepository userRepository;
@@ -33,6 +34,30 @@ public class DemoDataSeeder implements CommandLineRunner {
     private final DeliveryAttemptRepository deliveryAttemptRepository;
     private final PasswordEncoder passwordEncoder;
     private final ObjectMapper objectMapper;
+
+    public DemoDataSeeder(
+            OrgRepository orgRepository,
+            UserRepository userRepository,
+            ProjectRepository projectRepository,
+            ApiKeyService apiKeyService,
+            EndpointRepository endpointRepository,
+            EventRepository eventRepository,
+            DeliveryRepository deliveryRepository,
+            DeliveryAttemptRepository deliveryAttemptRepository,
+            PasswordEncoder passwordEncoder,
+            ObjectMapper objectMapper
+    ) {
+        this.orgRepository = orgRepository;
+        this.userRepository = userRepository;
+        this.projectRepository = projectRepository;
+        this.apiKeyService = apiKeyService;
+        this.endpointRepository = endpointRepository;
+        this.eventRepository = eventRepository;
+        this.deliveryRepository = deliveryRepository;
+        this.deliveryAttemptRepository = deliveryAttemptRepository;
+        this.passwordEncoder = passwordEncoder;
+        this.objectMapper = objectMapper;
+    }
 
     @Override
     @Transactional
@@ -70,8 +95,8 @@ public class DemoDataSeeder implements CommandLineRunner {
         Project savedProject = projectRepository.save(project);
 
         // 4. Create Demo API Key
-        ApiKeyService.GeneratedApiKey apiKey = apiKeyService.createApiKey(savedProject, "E-Commerce Ingest Service");
-        log.info("Seeded Demo Tenant API Key: {}", apiKey.rawSecret());
+        ApiKey apiKey = apiKeyService.createDeterministicApiKey(savedProject, "E-Commerce Ingest Service", DEMO_API_KEY);
+        log.info("Seeded Demo Tenant API Key: {}", DEMO_API_KEY);
 
         // 5. Create Endpoints
         Endpoint ep1 = Endpoint.builder()

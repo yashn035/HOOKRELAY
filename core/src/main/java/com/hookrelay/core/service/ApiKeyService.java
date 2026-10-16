@@ -51,6 +51,23 @@ public class ApiKeyService {
         return new GeneratedApiKey(saved, fullKey);
     }
 
+    @Transactional
+    public ApiKey createDeterministicApiKey(Project project, String name, String fullKey) {
+        String prefix = fullKey.substring(0, Math.min(16, fullKey.length()));
+        String keyHash = hashKey(fullKey);
+
+        ApiKey apiKey = ApiKey.builder()
+                .project(project)
+                .name(name)
+                .keyPrefix(prefix)
+                .keyHash(keyHash)
+                .revoked(false)
+                .build();
+
+        return apiKeyRepository.save(apiKey);
+    }
+
+    @Transactional
     public Optional<ApiKey> validateApiKey(String rawKey) {
         if (rawKey == null || !rawKey.startsWith(KEY_PREFIX)) {
             return Optional.empty();

@@ -10,6 +10,7 @@ import java.util.UUID;
 
 @Repository
 public interface ApiKeyRepository extends JpaRepository<ApiKey, UUID> {
+    @org.springframework.data.jpa.repository.EntityGraph(attributePaths = {"project"})
     Optional<ApiKey> findByKeyHashAndRevokedFalse(String keyHash);
     List<ApiKey> findByProjectId(UUID projectId);
     Optional<ApiKey> findByIdAndProjectId(UUID id, UUID projectId);
