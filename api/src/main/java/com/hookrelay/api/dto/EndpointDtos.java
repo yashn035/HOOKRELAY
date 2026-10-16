@@ -23,7 +23,9 @@ public class EndpointDtos {
 
             Integer failureThreshold,
 
-            Integer rateLimitPerSecond
+            Integer rateLimitPerSecond,
+
+            String transformRules
     ) {}
 
     public record UpdateEndpointRequest(
@@ -32,7 +34,8 @@ public class EndpointDtos {
             List<String> eventTypesFilter,
             Boolean active,
             Integer failureThreshold,
-            Integer rateLimitPerSecond
+            Integer rateLimitPerSecond,
+            String transformRules
     ) {}
 
     public record EndpointResponse(
@@ -48,7 +51,22 @@ public class EndpointDtos {
             boolean circuitBroken,
             Instant circuitBrokenAt,
             Integer rateLimitPerSecond,
+            String transformRules,
             Instant createdAt,
             Instant updatedAt
+    ) {}
+
+    public record TestTransformRequest(
+            @NotBlank(message = "Sample payload JSON is required")
+            String payload,
+
+            @NotBlank(message = "Transform rules JSON is required")
+            String rules
+    ) {}
+
+    public record TestTransformResponse(
+            boolean valid,
+            String transformedPayload,
+            String errorMessage
     ) {}
 }

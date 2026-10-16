@@ -16,12 +16,15 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/projects/{projectId}/deliveries")
-@RequiredArgsConstructor
 @PreAuthorize("hasRole('USER')")
 @Tag(name = "Deliveries", description = "Webhook delivery logs, attempt timelines, and manual replay")
 public class DeliveryController {
 
     private final DeliveryService deliveryService;
+
+    public DeliveryController(DeliveryService deliveryService) {
+        this.deliveryService = deliveryService;
+    }
 
     @GetMapping
     @Operation(summary = "List deliveries with status filtering and pagination")

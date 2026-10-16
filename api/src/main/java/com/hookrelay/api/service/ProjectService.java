@@ -13,11 +13,18 @@ import java.util.List;
 import java.util.UUID;
 
 @Service
-@RequiredArgsConstructor
 public class ProjectService {
 
     private final ProjectRepository projectRepository;
     private final OrgRepository orgRepository;
+
+    public ProjectService(
+            ProjectRepository projectRepository,
+            OrgRepository orgRepository
+    ) {
+        this.projectRepository = projectRepository;
+        this.orgRepository = orgRepository;
+    }
 
     public List<ProjectResponse> getProjectsForOrg(UUID orgId) {
         return projectRepository.findByOrgId(orgId).stream()

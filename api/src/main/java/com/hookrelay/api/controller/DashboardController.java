@@ -18,12 +18,15 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/projects/{projectId}/dashboard")
-@RequiredArgsConstructor
 @PreAuthorize("hasRole('USER')")
 @Tag(name = "Dashboard", description = "Aggregated delivery metrics, success rates, and latency analytics")
 public class DashboardController {
 
     private final DashboardService dashboardService;
+
+    public DashboardController(DashboardService dashboardService) {
+        this.dashboardService = dashboardService;
+    }
 
     @GetMapping
     @Operation(summary = "Get overview metrics and chart datasets for project dashboard")

@@ -67,6 +67,9 @@ public class Endpoint extends BaseEntity {
     @Column(name = "rate_limit_per_second")
     private Integer rateLimitPerSecond;
 
+    @Column(name = "transform_rules", columnDefinition = "TEXT")
+    private String transformRules;
+
     /**
      * Checks if this endpoint is subscribed to a specific event type.
      * An empty or wildcard list matches all event types.

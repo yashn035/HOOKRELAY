@@ -18,12 +18,15 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/projects/{projectId}/endpoints")
-@RequiredArgsConstructor
 @PreAuthorize("hasRole('USER')")
 @Tag(name = "Endpoints", description = "Subscriber destination endpoints and circuit breakers")
 public class EndpointController {
 
     private final EndpointService endpointService;
+
+    public EndpointController(EndpointService endpointService) {
+        this.endpointService = endpointService;
+    }
 
     @GetMapping
     @Operation(summary = "List all webhook subscriber endpoints for a project")
@@ -84,6 +87,16 @@ public class EndpointController {
             @PathVariable UUID endpointId
     ) {
         return ResponseEntity.ok(endpointService.resetCircuitBreaker(projectId, endpointId, principal.getOrgId()));
+    }
+
+    @PostMapping("/test-transform")
+    @Operation(summary = "Test payload transformation rules on sample JSON without persisting")
+    public ResponseEntity<TestTransformResponse> testTransform(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable UUID projectId,
+            @Valid @RequestBody TestTransformRequest req
+    ) {
+        return ResponseEntity.ok(endpointService.testTransform(projectId, principal.getOrgId(), req));
     }
 
     @DeleteMapping("/{endpointId}")

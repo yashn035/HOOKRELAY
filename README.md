@@ -91,6 +91,52 @@ flowchart TD
 | **SSRF Defenses** | DNS resolution check before HTTP dispatch | Blocks attempts to deliver payloads to private IPs (`10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`, `127.0.0.0/8`, cloud metadata `169.254.169.254`). |
 | **Authenticity** | HMAC-SHA256 (`t=<ts>,v1=<hex>`) | Constant-time validation protects against timing attacks, spoofing, and replay attacks. |
 | **Circuit Breakers** | Per-endpoint failure threshold counter | Automatically suspends delivery to broken subscribers to protect worker thread pools from thundering herds. |
+| **Payload Transforms** | JSONPath + formatting filters | Transform raw tenant event structures per-endpoint prior to HMAC signing. |
+
+---
+
+## ⚡ Payload Transformation Rules (JSONPath)
+
+HookRelay allows configuring per-endpoint payload transformation rules. This lets subscribers reshape incoming events to match their internal API contracts without modifying publisher code.
+
+Transforms are evaluated before computing HMAC signatures, guaranteeing cryptographic authenticity covers the exact transformed body received by the subscriber.
+
+### Example Transformation Rule:
+```json
+{
+  "orderId": "$.data.orderId",
+  "amount_fmt": "$.data.amount | number:'0.00'",
+  "customerName": "$.data.customer.name | upper",
+  "supportEmail": "$.data.customer.email | lower"
+}
+```
+
+### Inbound Raw Event:
+```json
+{
+  "event": "order.completed",
+  "data": {
+    "orderId": "ord_9981",
+    "amount": 259.4,
+    "customer": {
+      "name": "Jane Doe",
+      "email": "JANE@EXAMPLE.COM"
+    }
+  }
+}
+```
+
+### Outbound Transformed Dispatch to Subscriber:
+```json
+{
+  "orderId": "ord_9981",
+  "amount_fmt": "259.40",
+  "customerName": "JANE DOE",
+  "supportEmail": "jane@example.com"
+}
+```
+
+*Interactive preview available in the dashboard via the **Test Transform** modal.*
 
 ---
 

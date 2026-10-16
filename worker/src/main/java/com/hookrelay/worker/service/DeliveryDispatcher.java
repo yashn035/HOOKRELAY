@@ -5,6 +5,7 @@ import com.hookrelay.core.entity.DeliveryAttempt;
 import com.hookrelay.core.entity.Endpoint;
 import com.hookrelay.core.entity.Event;
 import com.hookrelay.core.service.HmacSignatureService;
+import com.hookrelay.core.service.PayloadTransformService;
 import com.hookrelay.core.service.SsrfProtectionService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -23,22 +24,33 @@ public class DeliveryDispatcher {
 
     private final HmacSignatureService hmacSignatureService;
     private final SsrfProtectionService ssrfProtectionService;
+    private final PayloadTransformService payloadTransformService;
     private final HttpClient httpClient;
 
     private static final Duration TIMEOUT = Duration.ofSeconds(10);
     private static final int MAX_RESPONSE_BODY_LENGTH = 4096;
 
+    @org.springframework.beans.factory.annotation.Autowired
     public DeliveryDispatcher(
             HmacSignatureService hmacSignatureService,
-            SsrfProtectionService ssrfProtectionService
+            SsrfProtectionService ssrfProtectionService,
+            PayloadTransformService payloadTransformService
     ) {
         this.hmacSignatureService = hmacSignatureService;
         this.ssrfProtectionService = ssrfProtectionService;
+        this.payloadTransformService = payloadTransformService;
         this.httpClient = HttpClient.newBuilder()
                 .version(HttpClient.Version.HTTP_1_1)
                 .connectTimeout(Duration.ofSeconds(5))
                 .followRedirects(HttpClient.Redirect.NEVER) // Prevent SSRF redirect hijacking
                 .build();
+    }
+
+    public DeliveryDispatcher(
+            HmacSignatureService hmacSignatureService,
+            SsrfProtectionService ssrfProtectionService
+    ) {
+        this(hmacSignatureService, ssrfProtectionService, new PayloadTransformService(new com.fasterxml.jackson.databind.ObjectMapper()));
     }
 
     public record DispatchResult(
@@ -62,9 +74,19 @@ public class DeliveryDispatcher {
             return new DispatchResult(false, 0, 0, null, null, "SSRF validation failed: " + e.getMessage());
         }
 
-        // 2. Compute HMAC Signature
-        long timestampSeconds = Instant.now().getEpochSecond();
+        // 2. Apply Payload Transformation (if configured)
         String payload = event.getData();
+        if (endpoint.getTransformRules() != null && !endpoint.getTransformRules().isBlank()) {
+            try {
+                payload = payloadTransformService.transform(payload, endpoint.getTransformRules());
+            } catch (Exception e) {
+                log.warn("Delivery {} payload transform failed: {}", delivery.getId(), e.getMessage());
+                return new DispatchResult(false, 0, 0, null, null, "Payload transformation failed: " + e.getMessage());
+            }
+        }
+
+        // 3. Compute HMAC Signature
+        long timestampSeconds = Instant.now().getEpochSecond();
         String signatureHeader = hmacSignatureService.generateSignatureHeader(payload, endpoint.getSecret(), timestampSeconds);
 
         // 3. Build HTTP Request

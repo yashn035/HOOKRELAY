@@ -27,13 +27,22 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1")
-@RequiredArgsConstructor
 @Tag(name = "Events", description = "High-throughput event ingestion and event history")
 public class EventController {
 
     private final EventIngestService eventIngestService;
     private final EventRepository eventRepository;
     private final ProjectService projectService;
+
+    public EventController(
+            EventIngestService eventIngestService,
+            EventRepository eventRepository,
+            ProjectService projectService
+    ) {
+        this.eventIngestService = eventIngestService;
+        this.eventRepository = eventRepository;
+        this.projectService = projectService;
+    }
 
     @PostMapping("/events")
     @Operation(

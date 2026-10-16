@@ -18,12 +18,15 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/projects")
-@RequiredArgsConstructor
 @PreAuthorize("hasRole('USER')")
 @Tag(name = "Projects", description = "Tenant project workspace management")
 public class ProjectController {
 
     private final ProjectService projectService;
+
+    public ProjectController(ProjectService projectService) {
+        this.projectService = projectService;
+    }
 
     @GetMapping
     @Operation(summary = "List all projects in the current user's organization")

@@ -21,7 +21,6 @@ import java.util.Locale;
 import java.util.UUID;
 
 @Service
-@RequiredArgsConstructor
 public class AuthService {
 
     private final UserRepository userRepository;
@@ -29,6 +28,20 @@ public class AuthService {
     private final ProjectRepository projectRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
+
+    public AuthService(
+            UserRepository userRepository,
+            OrgRepository orgRepository,
+            ProjectRepository projectRepository,
+            PasswordEncoder passwordEncoder,
+            JwtTokenProvider jwtTokenProvider
+    ) {
+        this.userRepository = userRepository;
+        this.orgRepository = orgRepository;
+        this.projectRepository = projectRepository;
+        this.passwordEncoder = passwordEncoder;
+        this.jwtTokenProvider = jwtTokenProvider;
+    }
 
     @Transactional
     public AuthResponse signup(SignupRequest req) {

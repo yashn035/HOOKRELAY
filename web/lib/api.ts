@@ -95,6 +95,7 @@ export const api = {
   getEndpoint: (projectId: string, id: string) => request<any>(`/api/v1/projects/${projectId}/endpoints/${id}`),
   createEndpoint: (projectId: string, body: any) => request<any>(`/api/v1/projects/${projectId}/endpoints`, { method: "POST", body: JSON.stringify(body) }),
   updateEndpoint: (projectId: string, id: string, body: any) => request<any>(`/api/v1/projects/${projectId}/endpoints/${id}`, { method: "PUT", body: JSON.stringify(body) }),
+  testTransform: (projectId: string, body: { payload: string; rules: string }) => request<any>(`/api/v1/projects/${projectId}/endpoints/test-transform`, { method: "POST", body: JSON.stringify(body) }),
   rotateSecret: (projectId: string, id: string) => request<any>(`/api/v1/projects/${projectId}/endpoints/${id}/rotate-secret`, { method: "POST" }),
   resetCircuitBreaker: (projectId: string, id: string) => request<any>(`/api/v1/projects/${projectId}/endpoints/${id}/circuit-breaker/reset`, { method: "POST" }),
   deleteEndpoint: (projectId: string, id: string) => request<void>(`/api/v1/projects/${projectId}/endpoints/${id}`, { method: "DELETE" }),

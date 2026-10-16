@@ -18,12 +18,21 @@ import java.util.List;
 import java.util.UUID;
 
 @Service
-@RequiredArgsConstructor
 public class DeliveryService {
 
     private final DeliveryRepository deliveryRepository;
     private final DeliveryAttemptRepository deliveryAttemptRepository;
     private final ProjectService projectService;
+
+    public DeliveryService(
+            DeliveryRepository deliveryRepository,
+            DeliveryAttemptRepository deliveryAttemptRepository,
+            ProjectService projectService
+    ) {
+        this.deliveryRepository = deliveryRepository;
+        this.deliveryAttemptRepository = deliveryAttemptRepository;
+        this.projectService = projectService;
+    }
 
     public Page<DeliveryResponse> listDeliveries(
             UUID projectId,

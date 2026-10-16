@@ -21,13 +21,17 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/projects/{projectId}/api-keys")
-@RequiredArgsConstructor
 @PreAuthorize("hasRole('USER')")
 @Tag(name = "API Keys", description = "Management of tenant ingestion API keys")
 public class ApiKeyController {
 
     private final ApiKeyService apiKeyService;
     private final ProjectService projectService;
+
+    public ApiKeyController(ApiKeyService apiKeyService, ProjectService projectService) {
+        this.apiKeyService = apiKeyService;
+        this.projectService = projectService;
+    }
 
     @GetMapping
     @Operation(summary = "List all API keys for a project")

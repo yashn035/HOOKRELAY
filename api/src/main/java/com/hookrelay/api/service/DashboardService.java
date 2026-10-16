@@ -18,7 +18,6 @@ import java.util.List;
 import java.util.UUID;
 
 @Service
-@RequiredArgsConstructor
 public class DashboardService {
 
     private final EventRepository eventRepository;
@@ -26,6 +25,20 @@ public class DashboardService {
     private final DeliveryAttemptRepository deliveryAttemptRepository;
     private final EndpointRepository endpointRepository;
     private final ProjectService projectService;
+
+    public DashboardService(
+            EventRepository eventRepository,
+            DeliveryRepository deliveryRepository,
+            DeliveryAttemptRepository deliveryAttemptRepository,
+            EndpointRepository endpointRepository,
+            ProjectService projectService
+    ) {
+        this.eventRepository = eventRepository;
+        this.deliveryRepository = deliveryRepository;
+        this.deliveryAttemptRepository = deliveryAttemptRepository;
+        this.endpointRepository = endpointRepository;
+        this.projectService = projectService;
+    }
 
     public DashboardOverview getOverview(UUID projectId, UUID orgId) {
         projectService.getProjectEntity(projectId, orgId);

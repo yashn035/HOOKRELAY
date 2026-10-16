@@ -2,10 +2,14 @@ package com.hookrelay.api.service;
 
 import com.hookrelay.api.dto.EndpointDtos.CreateEndpointRequest;
 import com.hookrelay.api.dto.EndpointDtos.EndpointResponse;
+import com.hookrelay.api.dto.EndpointDtos.TestTransformRequest;
+import com.hookrelay.api.dto.EndpointDtos.TestTransformResponse;
 import com.hookrelay.core.entity.Endpoint;
 import com.hookrelay.core.entity.Org;
 import com.hookrelay.core.entity.Project;
 import com.hookrelay.core.repository.EndpointRepository;
+import com.hookrelay.core.service.PayloadTransformService;
+import com.hookrelay.core.service.PayloadTransformService.TransformResult;
 import com.hookrelay.core.service.SsrfProtectionService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -35,6 +39,9 @@ class EndpointServiceTest {
     @Mock
     private SsrfProtectionService ssrfProtectionService;
 
+    @Mock
+    private PayloadTransformService payloadTransformService;
+
     @InjectMocks
     private EndpointService endpointService;
 
@@ -59,6 +66,7 @@ class EndpointServiceTest {
                 .secret("whsec_test_secret")
                 .active(true)
                 .failureThreshold(5)
+                .transformRules("{\"orderId\": \"$.data.id\"}")
                 .build();
         testEndpoint.setId(endpointId);
     }
@@ -72,7 +80,8 @@ class EndpointServiceTest {
                 null, // test auto-generated secret
                 List.of("order.created"),
                 5,
-                100
+                100,
+                "{\"orderId\": \"$.data.id\"}"
         );
 
         when(projectService.getProjectEntity(projectId, orgId)).thenReturn(testProject);
@@ -87,8 +96,25 @@ class EndpointServiceTest {
         assertNotNull(res);
         assertEquals("Stripe Sink", res.name());
         assertTrue(res.secret().startsWith("whsec_"));
+        assertEquals("{\"orderId\": \"$.data.id\"}", res.transformRules());
         verify(ssrfProtectionService).validateEndpointUrl("https://httpbin.org/post");
+        verify(payloadTransformService).validateRules("{\"orderId\": \"$.data.id\"}");
         verify(endpointRepository).save(any(Endpoint.class));
+    }
+
+    @Test
+    @DisplayName("Should test transform preview")
+    void testTestTransformPreview() {
+        TestTransformRequest req = new TestTransformRequest("{\"data\":{\"id\":\"123\"}}", "{\"orderId\":\"$.data.id\"}");
+        when(projectService.getProjectEntity(projectId, orgId)).thenReturn(testProject);
+        when(payloadTransformService.testTransform(req.payload(), req.rules()))
+                .thenReturn(new TransformResult(true, "{\"orderId\":\"123\"}", null));
+
+        TestTransformResponse res = endpointService.testTransform(projectId, orgId, req);
+
+        assertTrue(res.valid());
+        assertEquals("{\"orderId\":\"123\"}", res.transformedPayload());
+        assertNull(res.errorMessage());
     }
 
     @Test

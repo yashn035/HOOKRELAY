@@ -4,6 +4,8 @@ import com.hookrelay.api.dto.EndpointDtos.*;
 import com.hookrelay.core.entity.Endpoint;
 import com.hookrelay.core.entity.Project;
 import com.hookrelay.core.repository.EndpointRepository;
+import com.hookrelay.core.service.PayloadTransformService;
+import com.hookrelay.core.service.PayloadTransformService.TransformResult;
 import com.hookrelay.core.service.SsrfProtectionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -16,13 +18,25 @@ import java.util.List;
 import java.util.UUID;
 
 @Service
-@RequiredArgsConstructor
 public class EndpointService {
 
     private final EndpointRepository endpointRepository;
     private final ProjectService projectService;
     private final SsrfProtectionService ssrfProtectionService;
+    private final PayloadTransformService payloadTransformService;
     private static final SecureRandom RANDOM = new SecureRandom();
+
+    public EndpointService(
+            EndpointRepository endpointRepository,
+            ProjectService projectService,
+            SsrfProtectionService ssrfProtectionService,
+            PayloadTransformService payloadTransformService
+    ) {
+        this.endpointRepository = endpointRepository;
+        this.projectService = projectService;
+        this.ssrfProtectionService = ssrfProtectionService;
+        this.payloadTransformService = payloadTransformService;
+    }
 
     public List<EndpointResponse> getEndpoints(UUID projectId, UUID orgId) {
         projectService.getProjectEntity(projectId, orgId);
@@ -45,6 +59,13 @@ public class EndpointService {
         // Validate URL against SSRF and HTTPS requirements
         ssrfProtectionService.validateEndpointUrl(req.url());
 
+        // Validate transform rules if provided
+        String transformRules = null;
+        if (req.transformRules() != null && !req.transformRules().isBlank()) {
+            payloadTransformService.validateRules(req.transformRules());
+            transformRules = req.transformRules().trim();
+        }
+
         String secret = req.secret();
         if (secret == null || secret.isBlank()) {
             secret = generateWebhookSecret();
@@ -59,6 +80,7 @@ public class EndpointService {
                 .active(true)
                 .failureThreshold(req.failureThreshold() != null ? req.failureThreshold() : 10)
                 .rateLimitPerSecond(req.rateLimitPerSecond())
+                .transformRules(transformRules)
                 .build();
 
         return toResponse(endpointRepository.save(endpoint));
@@ -89,8 +111,22 @@ public class EndpointService {
         if (req.rateLimitPerSecond() != null) {
             endpoint.setRateLimitPerSecond(req.rateLimitPerSecond());
         }
+        if (req.transformRules() != null) {
+            if (!req.transformRules().isBlank()) {
+                payloadTransformService.validateRules(req.transformRules());
+                endpoint.setTransformRules(req.transformRules().trim());
+            } else {
+                endpoint.setTransformRules(null);
+            }
+        }
 
         return toResponse(endpointRepository.save(endpoint));
+    }
+
+    public TestTransformResponse testTransform(UUID projectId, UUID orgId, TestTransformRequest req) {
+        projectService.getProjectEntity(projectId, orgId);
+        TransformResult result = payloadTransformService.testTransform(req.payload(), req.rules());
+        return new TestTransformResponse(result.valid(), result.transformedPayload(), result.errorMessage());
     }
 
     @Transactional
@@ -145,6 +181,7 @@ public class EndpointService {
                 e.isCircuitBroken(),
                 e.getCircuitBrokenAt(),
                 e.getRateLimitPerSecond(),
+                e.getTransformRules(),
                 e.getCreatedAt(),
                 e.getUpdatedAt()
         );
