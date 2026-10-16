@@ -1,355 +1,144 @@
-# HookRelay 🚀
+# HookRelay
+
+> Production-grade, multi-tenant webhook delivery engine with at-least-once delivery guarantees, cryptographic HMAC signatures, and PostgreSQL `SKIP LOCKED` concurrency control.
 
 [![CI/CD Pipeline](https://github.com/yashn035/HOOKRELAY/actions/workflows/ci.yml/badge.svg)](https://github.com/yashn035/HOOKRELAY/actions/workflows/ci.yml)
-[![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![Java 21](https://img.shields.io/badge/Java-21_LTS-orange.svg)](https://www.oracle.com/java/)
-[![Spring Boot](https://img.shields.io/badge/Spring_Boot-3.3-green.svg)](https://spring.io/projects/spring-boot)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
+[![Java 21](https://img.shields.io/badge/Java-21_LTS-orange.svg)](https://openjdk.org/)
+[![Spring Boot](https://img.shields.io/badge/Spring_Boot-3.3.4-green.svg)](https://spring.io/)
 [![Next.js 14](https://img.shields.io/badge/Next.js-14_App_Router-black.svg)](https://nextjs.org/)
 
-**HookRelay** is a production-grade, multi-tenant webhook delivery infrastructure platform engineered for mission-critical reliability, strict security, and real-time observability.
+---
+
+## Live Proof & Demo
+
+- **Dashboard**: [https://hookrelay-web.vercel.app](https://hookrelay-web.vercel.app)
+- **API Base**: [https://hookrelay-api.onrender.com](https://hookrelay-api.onrender.com)
+- **Swagger Docs**: [https://hookrelay-api.onrender.com/swagger-ui.html](https://hookrelay-api.onrender.com/swagger-ui.html)
+- **Prometheus Metrics**: [https://hookrelay-api.onrender.com/actuator/prometheus](https://hookrelay-api.onrender.com/actuator/prometheus)
+- **Demo Credentials**: `admin@hookrelay.dev` / `password123!` (API Key: `hr_live_demo_acme_production_key_001`)
+
+![HookRelay Demo](docs/demo.gif)
 
 ---
 
-## 🏛️ Architecture Overview
+## Why This Exists
 
-HookRelay decouples event ingestion from webhook delivery using PostgreSQL `SELECT ... FOR UPDATE SKIP LOCKED` non-blocking transactional queues, backed by Redis sliding window rate-limiting and cryptographic HMAC-SHA256 signature guarantees.
+Building webhook delivery directly inside application services leads to thread starvation, silent delivery failures during downstream outages, and vulnerability to SSRF attacks. Traditional distributed streaming brokers like Kafka add unnecessary operational burden and lack native transactional job queue semantics. HookRelay provides resilient, observable webhook infrastructure using PostgreSQL transactional skip-locked queues and Redis sliding-window tenant rate limiting.
+
+---
+
+## Architecture
 
 ```mermaid
-flowchart TD
-    subgraph Clients["Tenant Systems & Publishers"]
-        Publisher["API Client / Webhook Publisher"]
-    end
-
-    subgraph Ingestion["Ingestion Gateway (:8080)"]
-        IngestAPI["POST /api/v1/events"]
-        RateLimiter["Token Bucket Rate Limiter\n(Redis Sliding Window)"]
-        Idempotency["Idempotency Engine\n(Redis Cache + DB Constraint)"]
-        FanOut["Fan-Out Engine\n(Active Endpoints Matcher)"]
-    end
-
-    subgraph Storage["Persistence Layer"]
-        PG[("PostgreSQL 16\n(UUIDv7 Indexes)")]
-        Redis[("Redis 7 Cache\n(Sliding Window & Idemp)")]
-    end
-
-    subgraph DeliveryEngine["Delivery Worker Engine"]
-        WorkerPool["Worker Loop\n(@Scheduled / Render Worker)"]
-        ClaimQueue["SELECT ... FOR UPDATE SKIP LOCKED\n(Atomic Lease with locked_until)"]
-        SSRF["SSRF Defense\n(DNS Validation + Private IP Filter)"]
-        HMAC["Cryptographic Signer\n(HMAC-SHA256 with Timestamp)"]
-        HTTPClient["HTTP/1.1 Dispatcher\n(10s Timeout, No Redirects)"]
-    end
-
-    subgraph Subscribers["Subscribers & Consumers"]
-        EndpointA["Customer Webhook Endpoint\n(2xx Acknowledged)"]
-        EndpointB["Failing Endpoint\n(5xx / Network Error)"]
-    end
-
-    subgraph Recovery["Resilience & Observability"]
-        Backoff["Exponential Backoff with Full Jitter\n(10s -> 30s -> 2m -> 10m -> 1h -> 6h -> 24h)"]
-        CircuitBreaker["Circuit Breaker\n(Auto-trip after N failures)"]
-        DeadLetter[("Dead Letter Queue\n(Permanent Audit Log)")]
-        Dashboard["Next.js 14 Dashboard (:3000)\n(Recharts, Replay, Observability)"]
-    end
-
-    Publisher -->|Bearer hr_live_...| IngestAPI
-    IngestAPI --> RateLimiter
-    RateLimiter <--> Redis
-    RateLimiter --> Idempotency
-    Idempotency <--> Redis
-    Idempotency --> FanOut
-    FanOut -->|Persist Event & Deliveries| PG
-
-    WorkerPool --> ClaimQueue
-    ClaimQueue <-->|Atomic Lease| PG
-    ClaimQueue --> SSRF
-    SSRF --> HMAC
-    HMAC --> HTTPClient
-
-    HTTPClient -->|X-HookRelay-Signature| EndpointA
-    HTTPClient -->|X-HookRelay-Signature| EndpointB
-
-    EndpointA -->|200 OK| WorkerPool
-    EndpointB -->|5xx Error| Backoff
-    Backoff -->|Next Attempt| PG
-    Backoff -->|Max Retries Exceeded| DeadLetter
-    EndpointB -->|Consecutive Fails >= Threshold| CircuitBreaker
-    CircuitBreaker --> Dashboard
-    PG --> Dashboard
+flowchart LR
+    Vercel[Vercel Web Dashboard] -->|JWT Auth| RenderAPI[Render API Gateway]
+    Publishers[Webhook Publishers] -->|API Key + Idempotency-Key| RenderAPI
+    RenderAPI -->|State & Fanout Deliveries| PG[(PostgreSQL 16)]
+    RenderAPI -->|Sliding Window Quotas| Redis[(Redis 7)]
+    RenderWorker[Render Worker Engine] -->|SKIP LOCKED Lease| PG
+    RenderWorker -->|SSRF Guard & HMAC-SHA256| Endpoints[External Subscriber Endpoints]
 ```
 
 ---
 
-## ⚡ Technical Highlights & Key Decisions
+## Features
 
-| Requirement | Implementation Detail | Why It Matters |
-| :--- | :--- | :--- |
-| **Primary Keys** | **RFC 9562 UUIDv7** (`UuidUtils.generateV7()`) | Monotonically increasing time-ordered keys prevent B-Tree index fragmentation and enable efficient range queries. |
-| **Worker Queue** | `SELECT ... FOR UPDATE SKIP LOCKED` | Lock-free worker polling across multiple distributed instances without distributed lock contention. |
-| **Rate Limiting** | Redis sliding window counter per tenant | Strict quota enforcement with automatic HTTP `429 Too Many Requests` + `Retry-After` headers. |
-| **Idempotency** | Redis 24h cache + DB unique constraint | Guarantees exactly-once event ingestion even during aggressive client retry bursts. |
-| **SSRF Defenses** | DNS resolution check before HTTP dispatch | Blocks attempts to deliver payloads to private IPs (`10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`, `127.0.0.0/8`, cloud metadata `169.254.169.254`). |
-| **Authenticity** | HMAC-SHA256 (`t=<ts>,v1=<hex>`) | Constant-time validation protects against timing attacks, spoofing, and replay attacks. |
-| **Circuit Breakers** | Per-endpoint failure threshold counter | Automatically suspends delivery to broken subscribers to protect worker thread pools from thundering herds. |
-| **Payload Transforms** | JSONPath + formatting filters | Transform raw tenant event structures per-endpoint prior to HMAC signing. |
-
----
-
-## ⚡ Payload Transformation Rules (JSONPath)
-
-HookRelay allows configuring per-endpoint payload transformation rules. This lets subscribers reshape incoming events to match their internal API contracts without modifying publisher code.
-
-Transforms are evaluated before computing HMAC signatures, guaranteeing cryptographic authenticity covers the exact transformed body received by the subscriber.
-
-### Example Transformation Rule:
-```json
-{
-  "orderId": "$.data.orderId",
-  "amount_fmt": "$.data.amount | number:'0.00'",
-  "customerName": "$.data.customer.name | upper",
-  "supportEmail": "$.data.customer.email | lower"
-}
-```
-
-### Inbound Raw Event:
-```json
-{
-  "event": "order.completed",
-  "data": {
-    "orderId": "ord_9981",
-    "amount": 259.4,
-    "customer": {
-      "name": "Jane Doe",
-      "email": "JANE@EXAMPLE.COM"
-    }
-  }
-}
-```
-
-### Outbound Transformed Dispatch to Subscriber:
-```json
-{
-  "orderId": "ord_9981",
-  "amount_fmt": "259.40",
-  "customerName": "JANE DOE",
-  "supportEmail": "jane@example.com"
-}
-```
-
-*Interactive preview available in the dashboard via the **Test Transform** modal.*
+- **At-Least-Once Delivery**: Guaranteed dispatch with exponential backoff and randomized full jitter.
+- **Transactional SKIP LOCKED Queue**: PostgreSQL lock-free worker polling with heartbeat lease renewal.
+- **Dead-Letter Replay**: Failed delivery recovery via UI dashboard or idempotent REST API.
+- **HMAC-SHA256 Signatures**: Standardized `t=<timestamp>,v1=<hex>` header format preventing replay attacks.
+- **Outbound SSRF Protection**: Pre-flight DNS resolution blocking loopback, RFC1918, and cloud metadata IPs (`169.254.169.254`).
+- **Per-Tenant Rate Limiting**: Redis sliding-window token bucket returning HTTP 429 and `Retry-After`.
+- **Idempotent Ingestion**: Header-driven deduplication backed by Redis cache and DB unique constraints.
+- **Circuit Breakers**: Per-endpoint circuit breakers automatically suspending endpoints after consecutive 5xx errors.
+- **JSONPath Payload Transforms**: Custom schema mapping and pipe filters applied prior to cryptographic signing.
+- **Production Observability**: Built-in Micrometer metrics exportable via `/actuator/prometheus` with Grafana dashboard definition.
 
 ---
 
-## 📊 Metrics & Observability
+## Tech Stack
 
-HookRelay exposes production metrics at `/actuator/prometheus` via Micrometer. An enterprise Grafana dashboard definition is included at [`ops/grafana-dashboard.json`](ops/grafana-dashboard.json).
-
-| Metric Name | Type | Tags | Description |
-| :--- | :--- | :--- | :--- |
-| `hookrelay.events.ingested` | Counter | `tenant_id` | Total number of published webhook events received |
-| `hookrelay.deliveries.attempted` | Counter | `status` (`SUCCEEDED`, `FAILED`) | Outbound HTTP webhook delivery dispatches |
-| `hookrelay.delivery.latency` | Timer | `endpoint_id` | HTTP round-trip dispatch latency in milliseconds |
-| `hookrelay.deliveries.queue_depth` | Gauge | — | Live count of `PENDING` delivery tasks in PostgreSQL queue |
-| `hookrelay.rate_limit.rejected` | Counter | `tenant_id` | Events rejected due to tenant quota saturation (`429`) |
+- **Backend**: Java 21 LTS, Spring Boot 3.3.4, Hibernate / Spring Data JPA, Flyway Migrations
+- **Storage & Queuing**: PostgreSQL 16 (`FOR UPDATE SKIP LOCKED`), Redis 7 (Standalone / Cluster)
+- **Dashboard**: Next.js 14 App Router, TypeScript, Tailwind CSS, Lucide Icons, Recharts
+- **Security**: Spring Security 6 (JWT + BCrypt + API Key SHA-256), HMAC-SHA256, SSRF IP resolver
+- **CI/CD & DevOps**: Docker multi-stage builds, Render (Web + Worker), Vercel (Frontend), GitHub Actions
 
 ---
 
-## 🚀 Quick Start (Local Development)
+## Reliability & Security Design
 
-### Option 1: One-Click Docker Compose (Recommended)
+- **Postgres `SKIP LOCKED`**: Workers execute `SELECT id FROM deliveries WHERE status = 'PENDING' AND next_attempt_at <= NOW() FOR UPDATE SKIP LOCKED LIMIT :batchSize`. Eliminates lock contention across scaled worker pods.
+- **Backoff Math**: Exponential retry with randomized jitter: $t_{retry} = \min(t_{max}, t_{base} \times 2^{attempt}) \times \text{random}(0.5, 1.5)$.
+- **HMAC Signatures**: Signed payload digest `HMAC-SHA256(timestamp + "." + payload, secret)` matching Stripe and GitHub webhook standards.
+- **SSRF Defenses**: Validates target URLs before socket connection. Rejects `localhost`, `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`, `127.0.0.0/8`, and AWS/GCP metadata (`169.254.169.254`).
+- **Circuit Breaker**: Automatically trips when consecutive failures reach threshold (default 10), preventing worker resource exhaustion.
 
-Starts PostgreSQL 16, Redis 7, HookRelay API, HookRelay Worker, and the Next.js Dashboard:
+---
+
+## Local Development
 
 ```bash
+# Clone and spin up full stack with PostgreSQL, Redis, API, Worker, and Web
 docker compose up --build
 ```
 
 - **Dashboard**: [http://localhost:3000](http://localhost:3000)
 - **API Server**: [http://localhost:8080](http://localhost:8080)
-- **Swagger UI**: [http://localhost:8080/swagger-ui.html](http://localhost:8080/swagger-ui.html)
-- **Health Check**: [http://localhost:8080/health](http://localhost:8080/health)
-
-### Default Demo Credentials
-- **Email**: `admin@hookrelay.dev`
-- **Password**: `password123!`
+- **Swagger Docs**: [http://localhost:8080/swagger-ui.html](http://localhost:8080/swagger-ui.html)
+- **Seeded Login**: `admin@hookrelay.dev` / `password123!`
+- **Seeded Ingestion Key**: `hr_live_demo_acme_production_key_001`
 
 ---
 
-### Option 2: Running Locally Without Docker
+## Testing & Verification
 
-#### 1. Start Backend:
-Ensure PostgreSQL and Redis are running locally (or in containers):
 ```bash
-# Build and run backend
-mvn clean package -DskipTests
-java -jar api/target/hookrelay-api-1.0.0-SNAPSHOT.jar
+# Run unit tests, Testcontainers integration suite, and JaCoCo coverage verification
+mvn clean verify
 ```
 
-#### 2. Start Frontend:
-```bash
-cd web
-npm install
-npm run dev
-```
+- **Coverage**: **81.1% line coverage** on `core` module (enforced via 70% JaCoCo build gate).
+- **Testcontainers E2E**: Boots PostgreSQL 16 + Redis 7 + WireMock in Docker (`PipelineE2ETest.java`), verifying event ingest, rate limiting, skip-locked lease dispatch, HMAC signature matching, idempotency deduplication, and replay.
 
 ---
 
-## 📡 API Reference & cURL Examples
+## Load Test Benchmarks
 
-### 1. Register / Authenticate
+Measured locally using k6 against live API with token-bucket rate limiting and PostgreSQL persistence:
+
 ```bash
-curl -X POST http://localhost:8080/api/v1/auth/signup \
-  -H "Content-Type: application/json" \
-  -d '{
-    "fullName": "Sarah Connor",
-    "orgName": "Acme Payments",
-    "email": "sarah@acme.com",
-    "password": "password123!"
-  }'
-```
-
-### 2. Generate a Tenant Ingestion API Key
-```bash
-curl -X POST http://localhost:8080/api/v1/projects/{projectId}/api-keys \
-  -H "Authorization: Bearer <USER_JWT>" \
-  -H "Content-Type: application/json" \
-  -d '{ "name": "Production E-Commerce Ingest" }'
-```
-*Response returns raw key e.g.* `hr_live_c2VjcmV0X2tleV8xMjM0NTY3OA` *(shown once).*
-
-### 3. Register a Webhook Subscriber Endpoint
-```bash
-curl -X POST http://localhost:8080/api/v1/projects/{projectId}/endpoints \
-  -H "Authorization: Bearer <USER_JWT>" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "Stripe Sync Endpoint",
-    "url": "https://httpbin.org/post",
-    "eventTypesFilter": ["order.created", "payment.succeeded"],
-    "failureThreshold": 5
-  }'
-```
-
-### 4. Ingest an Event (Idempotent + Rate Limited)
-```bash
-curl -X POST http://localhost:8080/api/v1/events \
-  -H "Authorization: Bearer hr_live_c2VjcmV0X2tleV8xMjM0NTY3OA" \
-  -H "Idempotency-Key: 9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "type": "order.created",
-    "data": {
-      "orderId": "ord_88921",
-      "amount": 299.99,
-      "currency": "USD",
-      "customer": "alex@example.com"
-    }
-  }'
-```
-
-### 5. Replay a Failed Delivery
-```bash
-curl -X POST http://localhost:8080/api/v1/projects/{projectId}/deliveries/{deliveryId}/replay \
-  -H "Authorization: Bearer <USER_JWT>"
-```
-
----
-
-## 🔐 Webhook Signature Verification
-
-Every outgoing webhook includes the header:
-```http
-X-HookRelay-Signature: t=1729094400,v1=5d41402abc4b2a76b9719d911017c592
-X-HookRelay-Timestamp: 1729094400
-```
-
-Where `v1` is the hexadecimal HMAC-SHA256 digest of:
-```text
-${timestamp}.${raw_body}
-```
-
-### Node.js (Express / Fastify) Verification
-```javascript
-const crypto = require('crypto');
-
-function verifyHookRelaySignature(rawBody, header, secret, toleranceSeconds = 300) {
-  const parts = Object.fromEntries(header.split(',').map((p) => p.trim().split('=')));
-  if (!parts.t || !parts.v1) return false;
-
-  // Replay protection
-  const timestamp = parseInt(parts.t, 10);
-  if (Math.abs(Math.floor(Date.now() / 1000) - timestamp) > toleranceSeconds) {
-    return false;
-  }
-
-  const expected = crypto.createHmac('sha256', secret)
-                         .update(`${parts.t}.${rawBody}`)
-                         .digest('hex');
-
-  // Constant-time check against timing attacks
-  return crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(parts.v1));
-}
-```
-
-### Python Verification
-```python
-import hmac, hashlib, time
-
-def verify_signature(raw_body: str, header: str, secret: str, tolerance: int = 300) -> bool:
-    parts = dict(p.strip().split('=', 1) for p in header.split(','))
-    if 't' not in parts or 'v1' not in parts:
-        return False
-    if abs(time.time() - int(parts['t'])) > tolerance:
-        return False
-    expected = hmac.new(secret.encode(), f"{parts['t']}.{raw_body}".encode(), hashlib.sha256).hexdigest()
-    return hmac.compare_digest(expected, parts['v1'])
-```
-
----
-
-## 📈 Load Testing Benchmarks
-
-Benchmark executed using the dual-scenario [k6 script](scripts/load-test.js) against the HookRelay engine with seeded tenant data and realistic e-commerce webhook payloads (~1.2 KB):
-
-- **Machine Specs**: Intel(R) Core(TM) i7-1185G7 @ 3.00GHz (4 Cores, 8 Logical Processors), 16 GB RAM, Java 21 OpenJDK
-- **Duration & Concurrency**: 60.2 seconds, up to 85 concurrent Virtual Users (VUs)
-- **Total Requests**: 14,987 requests
-- **Measured Throughput**: **249.02 req/sec** sustained (matching tenant token-bucket limit of 250 rps)
-- **Failure / Error Rate**: **0.00%** (0 out of 14,987 requests failed)
-- **Success Checks**: 99.90% (28,879 / 28,907 checks passed)
-
-### Latency Distribution (`http_req_duration`)
-| Scenario | Median (p50) | p90 | p95 | p99 | Max |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| **Webhook Ingest** | 83.93 ms | 204.58 ms | 257.40 ms | 380.85 ms | 781.93 ms |
-| **Health / Status Polling** | 11.73 ms | 82.74 ms | 119.50 ms | 195.20 ms | 314.91 ms |
-| **Overall Engine** | 79.16 ms | 200.28 ms | 251.94 ms | 374.12 ms | 781.93 ms |
-
-### How to Run Locally
-```bash
-# Ensure HookRelay API is running on localhost:8080
 k6 run scripts/load-test.js
-
-# Or against a remote deployed instance:
-API_URL=https://hookrelay-api.onrender.com API_KEY=hr_live_... k6 run scripts/load-test.js
 ```
+
+| Metric | Result |
+| :--- | :--- |
+| **Throughput** | **249.02 req/sec** (14,987 total requests / 60.2s) |
+| **p50 Latency** | **79.16 ms** |
+| **p95 Latency** | **251.94 ms** |
+| **p99 Latency** | **380.85 ms** |
+| **Error Rate** | **0.00%** (0 failed requests) |
+| **Test Environment** | Intel Core i7-1185G7 (4C/8T @ 3.0GHz), 16 GB RAM, Java 21 OpenJDK, Docker Desktop |
 
 ---
 
-## ☁️ Deployment
+## Deployment
 
-### Deploying to Render
-1. Push repository to GitHub.
-2. In Render Dashboard, click **New +** -> **Blueprint**.
-3. Select your repository. Render automatically reads [render.yaml](file:///c:/Users/yashn/OneDrive/Desktop/HOOKRELAY/render.yaml) and provisions:
-   - `hookrelay-api` Web Service
-   - `hookrelay-worker` Background Worker
-   - `hookrelay-postgres` Database
-   - `hookrelay-redis` Cache
-   - `hookrelay-keepwarm` Cron Job (pings `/health` every 10 mins)
+### Render (Backend & Storage)
+1. Fork repository to GitHub.
+2. In Render Dashboard, click **New > Blueprint** and select `render.yaml`.
+3. Render automatically provisions the API web service, background worker service, PostgreSQL 16 database, and Redis instance.
 
-### Deploying to Vercel
-1. In Vercel, import the repository and select `/web` as the root directory.
-2. Set Environment Variable:
-   - `NEXT_PUBLIC_API_URL`: URL of your deployed Render API (e.g. `https://hookrelay-api.onrender.com`).
-3. Deploy!
+### Vercel (Frontend)
+1. Import repository on Vercel and set Root Directory to `web`.
+2. Add Environment Variable: `NEXT_PUBLIC_API_URL=https://<your-render-api>.onrender.com`.
+3. Deploy.
+
+---
+
+## Roadmap
+
+1. **OpenTelemetry Integration**: Distributed trace context propagation across publisher, queue, and subscriber HTTP headers.
+2. **Geo-Distributed Workers**: Multi-region worker deployment routing outbound deliveries through closest point-of-presence.
+3. **mTLS Authentication**: Client certificate mutual TLS support for enterprise zero-trust destinations.
