@@ -1,0 +1,102 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: hookrelay-postgres
+    environment:
+      POSTGRES_DB: hookrelay
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d hookrelay"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: hookrelay-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: hookrelay-api
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/hookrelay
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: password
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: super-secret-key-32-bytes-minimum-hookrelay-production-dev!
+      HOOKRELAY_ENFORCE_HTTPS: "false" # Local docker dev
+      HOOKRELAY_BLOCK_PRIVATE_IPS: "false" # Local docker dev
+      HOOKRELAY_WORKER_ENABLED: "false" # Let dedicated worker container handle queue
+      CORS_ORIGINS: http://localhost:3000,http://localhost:3001
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: hookrelay-worker
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: worker
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/hookrelay
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: password
+      REDIS_URL: redis://redis:6379
+      HOOKRELAY_WORKER_ENABLED: "true"
+      HOOKRELAY_WORKER_POLL_DELAY_MS: "1000"
+      HOOKRELAY_WORKER_THREADS: "10"
+      HOOKRELAY_ENFORCE_HTTPS: "false"
+      HOOKRELAY_BLOCK_PRIVATE_IPS: "false"
+    command: ["java", "-jar", "/app/app.jar", "--spring.profiles.active=worker"]
+
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:8080
+    container_name: hookrelay-web
+    depends_on:
+      - api
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8080
+
+volumes:
+  postgres_data:
+  redis_data:
