@@ -35,7 +35,7 @@ services:
     name: hookrelay-worker
     runtime: docker
     dockerfilePath: ./Dockerfile
-    dockerCommand: java -jar /app/app.jar --spring.profiles.active=worker
+    dockerCommand: --spring.profiles.active=worker
     plan: starter
     region: oregon
     envVars:
