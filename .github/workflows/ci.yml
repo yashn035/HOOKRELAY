@@ -11,31 +11,6 @@ jobs:
     name: Backend Test & Build (Java 21)
     runs-on: ubuntu-latest
 
-    services:
-      postgres:
-        image: postgres:16-alpine
-        env:
-          POSTGRES_DB: hookrelay_test
-          POSTGRES_USER: test_user
-          POSTGRES_PASSWORD: test_password
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
-      redis:
-        image: redis:7-alpine
-        ports:
-          - 6379:6379
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -47,10 +22,8 @@ jobs:
           java-version: '21'
           cache: 'maven'
 
-      - name: Run Maven Tests & Verify
+      - name: Run Maven Tests & Verify (JaCoCo + Testcontainers)
         run: mvn clean verify -B
-        env:
-          SPRING_PROFILES_ACTIVE: test
 
       - name: Build Backend Docker Image
         run: docker build -t hookrelay/backend:latest .

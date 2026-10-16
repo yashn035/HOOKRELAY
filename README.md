@@ -1,6 +1,6 @@
 # HookRelay 🚀
 
-[![CI/CD Pipeline](https://github.com/hookrelay/hookrelay/actions/workflows/ci.yml/badge.svg)](https://github.com/hookrelay/hookrelay/actions)
+[![CI/CD Pipeline](https://github.com/yashn035/HOOKRELAY/actions/workflows/ci.yml/badge.svg)](https://github.com/yashn035/HOOKRELAY/actions/workflows/ci.yml)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Java 21](https://img.shields.io/badge/Java-21_LTS-orange.svg)](https://www.oracle.com/java/)
 [![Spring Boot](https://img.shields.io/badge/Spring_Boot-3.3-green.svg)](https://spring.io/projects/spring-boot)
