@@ -11,6 +11,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -50,7 +51,7 @@ class ApiKeyServiceTest {
         assertTrue(result.rawSecret().startsWith("hr_live_"));
         assertEquals("Backend Ingest", result.apiKey().getName());
         assertNotNull(result.apiKey().getKeyHash());
-        assertEquals(64, result.apiKey().getKeyHash().length()); // 256-bit hex
+        assertEquals(64, result.apiKey().getKeyHash().length());
     }
 
     @Test
@@ -74,14 +75,44 @@ class ApiKeyServiceTest {
 
         assertTrue(validated.isPresent());
         assertEquals("Test Key", validated.get().getName());
-        verify(apiKeyRepository).save(apiKey); // Verified lastUsedAt was touched
+        verify(apiKeyRepository).save(apiKey);
     }
 
     @Test
     @DisplayName("Should reject malformed or non-prefixed key string")
     void testRejectInvalidFormat() {
-        Optional<ApiKey> res = apiKeyService.validateApiKey("invalid_format_key");
-        assertFalse(res.isPresent());
+        assertFalse(apiKeyService.validateApiKey(null).isPresent());
+        assertFalse(apiKeyService.validateApiKey("invalid_format_key").isPresent());
         verify(apiKeyRepository, never()).findByKeyHashAndRevokedFalse(any());
+    }
+
+    @Test
+    @DisplayName("Should revoke existing API key")
+    void testRevokeApiKey() {
+        UUID keyId = UUID.randomUUID();
+        ApiKey key = ApiKey.builder()
+                .project(testProject)
+                .name("To Revoke")
+                .keyPrefix("hr_live_")
+                .keyHash("somehash")
+                .revoked(false)
+                .build();
+
+        when(apiKeyRepository.findByIdAndProjectId(keyId, testProject.getId())).thenReturn(Optional.of(key));
+
+        apiKeyService.revokeApiKey(keyId, testProject.getId());
+
+        assertTrue(key.isRevoked());
+        assertNotNull(key.getRevokedAt());
+        verify(apiKeyRepository).save(key);
+    }
+
+    @Test
+    @DisplayName("Should list project keys")
+    void testListProjectKeys() {
+        when(apiKeyRepository.findByProjectId(testProject.getId())).thenReturn(List.of());
+        List<ApiKey> list = apiKeyService.listProjectKeys(testProject.getId());
+        assertNotNull(list);
+        verify(apiKeyRepository).findByProjectId(testProject.getId());
     }
 }

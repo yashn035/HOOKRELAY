@@ -28,12 +28,32 @@ class SsrfProtectionServiceTest {
     }
 
     @Test
+    @DisplayName("Should accept valid HTTPS public endpoint")
+    void testAcceptValidHttpsUrl() {
+        assertDoesNotThrow(() ->
+                ssrfService.validateEndpointUrl("https://httpbin.org/post"));
+    }
+
+    @Test
+    @DisplayName("Should allow HTTP when enforceHttps is false")
+    void testAllowHttpWhenDisabled() {
+        ReflectionTestUtils.setField(ssrfService, "enforceHttps", false);
+        ReflectionTestUtils.setField(ssrfService, "blockPrivateIps", false);
+        assertDoesNotThrow(() ->
+                ssrfService.validateEndpointUrl("http://example.com/webhook"));
+    }
+
+    @Test
     @DisplayName("Should reject empty or malformed URLs")
     void testRejectMalformedUrl() {
         assertThrows(IllegalArgumentException.class, () ->
                 ssrfService.validateEndpointUrl("not_a_valid_url"));
         assertThrows(IllegalArgumentException.class, () ->
                 ssrfService.validateEndpointUrl(""));
+        assertThrows(IllegalArgumentException.class, () ->
+                ssrfService.validateEndpointUrl(null));
+        assertThrows(IllegalArgumentException.class, () ->
+                ssrfService.validateEndpointUrl("https://"));
     }
 
     @Test
@@ -42,9 +62,19 @@ class SsrfProtectionServiceTest {
         assertTrue(SsrfProtectionService.isPrivateOrLocalAddress(InetAddress.getByName("127.0.0.1")));
         assertTrue(SsrfProtectionService.isPrivateOrLocalAddress(InetAddress.getByName("10.0.0.1")));
         assertTrue(SsrfProtectionService.isPrivateOrLocalAddress(InetAddress.getByName("172.16.0.1")));
+        assertTrue(SsrfProtectionService.isPrivateOrLocalAddress(InetAddress.getByName("172.31.255.255")));
         assertTrue(SsrfProtectionService.isPrivateOrLocalAddress(InetAddress.getByName("192.168.1.1")));
         assertTrue(SsrfProtectionService.isPrivateOrLocalAddress(InetAddress.getByName("169.254.169.254"))); // AWS Metadata
         assertTrue(SsrfProtectionService.isPrivateOrLocalAddress(InetAddress.getByName("0.0.0.0")));
+        assertTrue(SsrfProtectionService.isPrivateOrLocalAddress(InetAddress.getByName("100.64.0.1"))); // Carrier-grade NAT
+    }
+
+    @Test
+    @DisplayName("Should detect IPv6 local and loopback addresses")
+    void testPrivateIpv6Detection() throws Exception {
+        assertTrue(SsrfProtectionService.isPrivateOrLocalAddress(InetAddress.getByName("::1")));
+        assertTrue(SsrfProtectionService.isPrivateOrLocalAddress(InetAddress.getByName("fc00::1")));
+        assertTrue(SsrfProtectionService.isPrivateOrLocalAddress(InetAddress.getByName("fe80::1")));
     }
 
     @Test
