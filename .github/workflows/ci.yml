@@ -10,6 +10,8 @@ jobs:
   backend-test-build:
     name: Backend Test & Build (Java 21)
     runs-on: ubuntu-latest
+    env:
+      TESTCONTAINERS_RYUK_DISABLED: "true"
 
     steps:
       - name: Checkout Code

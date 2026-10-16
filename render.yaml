@@ -22,7 +22,7 @@ services:
       - key: JWT_SECRET
         generateValue: true
       - key: CORS_ORIGINS
-        value: https://hookrelay.vercel.app,https://*.vercel.app
+        sync: false
       - key: HOOKRELAY_ENFORCE_HTTPS
         value: "true"
       - key: HOOKRELAY_BLOCK_PRIVATE_IPS
