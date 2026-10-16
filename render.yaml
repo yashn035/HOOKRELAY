@@ -34,6 +34,13 @@ services:
       - key: HOOKRELAY_WORKER_THREADS
         value: "10"
 
+  # 2. Render Key Value (Valkey/Redis-compatible)
+  - type: keyvalue
+    name: hookrelay-redis
+    plan: free
+    region: oregon
+    ipAllowList: []
+
 databases:
   - name: hookrelay-postgres
     databaseName: hookrelay
@@ -41,9 +48,3 @@ databases:
     plan: free
     region: oregon
     postgresMajorVersion: 16
-
-# Key-Value Store on Render
-keyValue:
-  - name: hookrelay-redis
-    plan: free
-    region: oregon
