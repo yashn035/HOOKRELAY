@@ -24,11 +24,20 @@ public class HookRelayMetricsService {
     }
 
     @PostConstruct
+    public void registerMetrics() {
+        registerGauges();
+        // Pre-register base meters so Prometheus scrapes include them immediately upon startup
+        meterRegistry.counter("hookrelay.events.ingested", "tenant_id", "default");
+        meterRegistry.counter("hookrelay.deliveries.attempted", "status", "INITIALIZED");
+        meterRegistry.timer("hookrelay.delivery.latency", "endpoint_id", "default");
+        meterRegistry.counter("hookrelay.rate_limit.rejected", "tenant_id", "default");
+        log.info("Registered all custom HookRelay Micrometer metrics on Prometheus registry");
+    }
+
     public void registerGauges() {
         Gauge.builder("hookrelay.deliveries.queue_depth", deliveryRepository, repo -> (double) repo.countByStatus(DeliveryStatus.PENDING))
                 .description("Current number of PENDING deliveries in PostgreSQL queue")
                 .register(meterRegistry);
-        log.info("Registered custom Micrometer metric: hookrelay.deliveries.queue_depth");
     }
 
     public void recordEventIngested(UUID tenantId) {
