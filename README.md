@@ -130,6 +130,7 @@ k6 run scripts/load-test.js
 1. Fork repository to GitHub.
 2. In Render Dashboard, click **New > Blueprint** and select `render.yaml`.
 3. Render automatically provisions the API web service, background worker service, PostgreSQL 16 database, and Redis instance.
+4. **Seed Demo Data (Optional)**: To seed the demo tenant in prod, set `HOOKRELAY_SEED_ENABLED=true` in Render's env vars for one deploy, then remove it.
 
 ### Vercel (Frontend)
 1. Import repository on Vercel and set Root Directory to `web`.

@@ -19,6 +19,7 @@ import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
 
 @Slf4j
+@org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(name = "hookrelay.seed.enabled", havingValue = "true")
 @Component
 public class DemoDataSeeder implements CommandLineRunner {
 
