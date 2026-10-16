@@ -4,15 +4,7 @@ FROM maven:3.9.9-eclipse-temurin-21-alpine AS builder
 
 WORKDIR /build
 
-# Cache maven dependencies
 COPY pom.xml pom.xml
-COPY core/pom.xml core/pom.xml
-COPY worker/pom.xml worker/pom.xml
-COPY api/pom.xml api/pom.xml
-
-RUN mvn dependency:go-offline -B
-
-# Copy source code and build
 COPY core core
 COPY worker worker
 COPY api api
