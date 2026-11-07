@@ -14,10 +14,10 @@
 
 ## Live Links & Demo
 
-- **Web Dashboard**: `[Deploy URL / Vercel Placeholder]`
-- **API Base URL**: `[API URL / Render Placeholder]`
-- **Swagger / OpenAPI**: `[API URL / Render Placeholder]/swagger-ui.html`
-- **Prometheus Metrics**: `[API URL / Render Placeholder]/actuator/prometheus`
+- **Web Dashboard**: [https://hookrelay.vercel.app](https://hookrelay.vercel.app)
+- **API Base URL**: [https://hookrelay-api.onrender.com](https://hookrelay-api.onrender.com)
+- **Swagger / OpenAPI**: [https://hookrelay-api.onrender.com/swagger-ui.html](https://hookrelay-api.onrender.com/swagger-ui.html)
+- **Prometheus Metrics**: [https://hookrelay-api.onrender.com/actuator/prometheus](https://hookrelay-api.onrender.com/actuator/prometheus)
 - **Demo Credentials**: `admin@hookrelay.dev` / `password123!` (API Key: `hr_live_demo_acme_production_key_001`)
 
 ---
