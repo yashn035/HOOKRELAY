@@ -30,6 +30,7 @@ import static org.mockito.Mockito.*;
 import static org.testcontainers.containers.localstack.LocalStackContainer.Service.CLOUDWATCH;
 import static org.testcontainers.containers.localstack.LocalStackContainer.Service.S3;
 
+@SuppressWarnings("resource")
 class AwsIntegrationLocalStackTest {
 
     private static final Logger log = LoggerFactory.getLogger(AwsIntegrationLocalStackTest.class);
@@ -206,3 +207,4 @@ class AwsIntegrationLocalStackTest {
         }
     }
 }
+

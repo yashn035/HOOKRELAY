@@ -120,3 +120,4 @@ class PiiRedactorTest {
         assertEquals("<html><body>Error contacting [REDACTED_EMAIL]</body></html>", redactedHtml);
     }
 }
+
