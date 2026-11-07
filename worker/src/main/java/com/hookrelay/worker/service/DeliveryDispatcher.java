@@ -8,6 +8,7 @@ import com.hookrelay.core.service.PayloadTransformService;
 import com.hookrelay.core.service.PiiRedactor;
 import com.hookrelay.core.service.SsrfProtectionService;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.net.URI;
@@ -31,6 +32,7 @@ public class DeliveryDispatcher {
     private static final Duration TIMEOUT = Duration.ofSeconds(10);
     private static final int MAX_RESPONSE_BODY_LENGTH = 4096;
 
+    @Autowired
     public DeliveryDispatcher(
             HmacSignatureService hmacSignatureService,
             SsrfProtectionService ssrfProtectionService,
