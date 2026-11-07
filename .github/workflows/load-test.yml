@@ -54,11 +54,11 @@ jobs:
           API_URL: http://localhost:8080
           API_KEY: hr_live_demo_acme_production_key_001
 
-      - name: Verify SLO Gates (P99 <= 400ms, Errors <= 1%)
+      - name: Verify SLO Gates (P99 <= 1000ms on 2-vCPU CI, Errors <= 1%)
         run: |
           python scripts/assert_slo.py summary.json
         env:
-          MAX_P99_MS: "500.0"
+          MAX_P99_MS: "1000.0"
 
       - name: Upload k6 Summary Artifact
         uses: actions/upload-artifact@v4

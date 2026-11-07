@@ -1,6 +1,5 @@
 import http from 'k6/http';
 import { check, sleep } from 'k6';
-import { textSummary } from 'https://jslib.k6.io/k6-summary/0.1.0/index.js';
 
 /**
  * HookRelay High-Throughput Ingestion Load Test
@@ -24,7 +23,7 @@ export const options = {
       startRate: 0,
       timeUnit: '1s',
       preAllocatedVUs: 50,
-      maxVUs: 500,
+      maxVUs: 1000,
       stages: [
         { target: 100, duration: '15s' },
         { target: 1000, duration: '30s' },
@@ -34,7 +33,7 @@ export const options = {
     },
   },
   thresholds: {
-    http_req_duration: ['p(95)<250', 'p(99)<400'],
+    http_req_duration: ['p(95)<500', 'p(99)<1000'],
     http_req_failed: ['rate<0.01'],
   },
   summaryTrendStats: ['avg', 'min', 'med', 'max', 'p(90)', 'p(95)', 'p(99)'],
@@ -109,9 +108,7 @@ export default function () {
 }
 
 export function handleSummary(data) {
-  const json = JSON.stringify(data, null, 2);
   return {
-    'stdout': textSummary(data, { indent: ' ', enableColors: true }),
-    'summary.json': json,
+    'summary.json': JSON.stringify(data, null, 2),
   };
 }

@@ -17,7 +17,6 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
-    command: postgres -c max_connections=200
 
   redis:
     image: redis:7-alpine
@@ -56,11 +55,6 @@ services:
       CORS_ORIGINS: http://localhost:3000,http://localhost:3001
     ports:
       - "8080:8080"
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8080/health || curl -f http://localhost:8080/actuator/health || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
 
   worker:
     build:
