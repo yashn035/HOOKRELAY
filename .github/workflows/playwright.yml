@@ -12,6 +12,10 @@ jobs:
     name: Playwright E2E (Dashboard & DLQ)
     runs-on: ubuntu-latest
 
+    defaults:
+      run:
+        working-directory: ./web
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -23,46 +27,16 @@ jobs:
           cache: 'npm'
           cache-dependency-path: web/package-lock.json
 
-      - name: Start Docker Compose Stack
-        run: |
-          docker compose up -d --build postgres redis api worker web
-        env:
-          HOOKRELAY_WORKER_ENABLED: "true"
-          HOOKRELAY_SEED_ENABLED: "true"
-
-      - name: Wait for API and Web App to be Ready
-        run: |
-          echo "Waiting for HookRelay API (http://localhost:8080/health)..."
-          for i in {1..30}; do
-            if curl -s -f http://localhost:8080/health; then
-              echo "API is healthy!"
-              break
-            fi
-            sleep 3
-          done
-
-          echo "Waiting for HookRelay Dashboard (http://localhost:3000)..."
-          for i in {1..30}; do
-            if curl -s -f http://localhost:3000; then
-              echo "Frontend is healthy!"
-              break
-            fi
-            sleep 3
-          done
-
       - name: Install Dependencies & Playwright Browsers
-        working-directory: ./web
         run: |
           npm ci
           npx playwright install --with-deps chromium
 
       - name: Run Playwright E2E Tests
-        working-directory: ./web
         run: |
           npx playwright test
         env:
-          BASE_URL: http://localhost:3000
-          API_URL: http://localhost:8080
+          CI: true
 
       - name: Upload Playwright Test Report
         uses: actions/upload-artifact@v4
@@ -71,8 +45,3 @@ jobs:
           name: playwright-report
           path: web/playwright-report/
           retention-days: 14
-
-      - name: Teardown Docker Compose Stack
-        if: always()
-        run: |
-          docker compose down -v
