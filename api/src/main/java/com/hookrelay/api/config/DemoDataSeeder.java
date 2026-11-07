@@ -90,7 +90,7 @@ public class DemoDataSeeder implements CommandLineRunner {
                 .org(savedOrg)
                 .name("Production Gateway")
                 .description("Main multi-region production event pipeline")
-                .rateLimitPerSecond(250)
+                .rateLimitPerSecond(5000)
                 .build();
         Project savedProject = projectRepository.save(project);
 

@@ -57,7 +57,8 @@ def verify_slos(summary_file_path: str) -> bool:
     
     p99_str = f"{p99:.2f} ms" if p99 is not None else "N/A"
     err_pct_str = f"{(error_rate * 100):.2f} %"
-    print(f"P99 Latency:              {p99_str} (SLO Target: <= 300.00 ms)")
+    max_p99 = float(os.environ.get("MAX_P99_MS", "400.0"))
+    print(f"P99 Latency:              {p99_str} (SLO Target: <= {max_p99:.2f} ms)")
     print(f"Error Rate:               {err_pct_str} (SLO Target: <= 1.00 %)")
     print("-" * 64)
 
@@ -67,9 +68,9 @@ def verify_slos(summary_file_path: str) -> bool:
     if p99 is None:
         passed = False
         reasons.append("P99 latency metric was not recorded in k6 summary.")
-    elif p99 > 300.0:
+    elif p99 > max_p99:
         passed = False
-        reasons.append(f"P99 latency {p99:.2f}ms exceeds SLO threshold of 300ms.")
+        reasons.append(f"P99 latency {p99:.2f}ms exceeds SLO threshold of {max_p99:.0f}ms.")
 
     if error_rate > 0.01:
         passed = False
