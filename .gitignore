@@ -51,6 +51,8 @@ __pycache__/
 regression-tests/__pycache__/
 qa-tests/.pytest_cache/
 qa-tests/__pycache__/
+*.dumpstream
+test-temp.*
 
 ### OS ###
 .DS_Store

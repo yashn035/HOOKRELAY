@@ -26,8 +26,7 @@ public class DeliveryService {
     public DeliveryService(
             DeliveryRepository deliveryRepository,
             DeliveryAttemptRepository deliveryAttemptRepository,
-            ProjectService projectService
-    ) {
+            ProjectService projectService) {
         this.deliveryRepository = deliveryRepository;
         this.deliveryAttemptRepository = deliveryAttemptRepository;
         this.projectService = projectService;
@@ -38,8 +37,7 @@ public class DeliveryService {
             UUID orgId,
             String statusStr,
             int page,
-            int size
-    ) {
+            int size) {
         projectService.getProjectEntity(projectId, orgId);
         PageRequest pageRequest = PageRequest.of(page, Math.min(size, 100), Sort.by(Sort.Direction.DESC, "createdAt"));
 
@@ -67,8 +65,7 @@ public class DeliveryService {
         return new DeliveryDetailResponse(
                 toResponse(delivery),
                 delivery.getEvent().getData(),
-                attempts
-        );
+                attempts);
     }
 
     @Transactional
@@ -133,8 +130,7 @@ public class DeliveryService {
                 d.getMaxAttempts(),
                 d.getNextAttemptAt(),
                 d.getCreatedAt(),
-                d.getUpdatedAt()
-        );
+                d.getUpdatedAt());
     }
 
     private DeliveryAttemptResponse toAttemptResponse(DeliveryAttempt a) {
@@ -146,7 +142,6 @@ public class DeliveryService {
                 a.getResponseHeaders(),
                 a.getLatencyMs(),
                 a.getErrorMessage(),
-                a.getExecutedAt()
-        );
+                a.getExecutedAt());
     }
 }
