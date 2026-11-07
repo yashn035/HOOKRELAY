@@ -5,7 +5,6 @@ import com.hookrelay.core.entity.Org;
 import com.hookrelay.core.entity.Project;
 import com.hookrelay.core.repository.OrgRepository;
 import com.hookrelay.core.repository.ProjectRepository;
-import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 

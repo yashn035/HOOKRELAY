@@ -7,12 +7,10 @@ import com.hookrelay.core.repository.EndpointRepository;
 import com.hookrelay.core.service.PayloadTransformService;
 import com.hookrelay.core.service.PayloadTransformService.TransformResult;
 import com.hookrelay.core.service.SsrfProtectionService;
-import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.security.SecureRandom;
-import java.time.Instant;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.UUID;

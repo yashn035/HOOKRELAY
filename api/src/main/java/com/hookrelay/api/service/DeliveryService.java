@@ -6,7 +6,6 @@ import com.hookrelay.core.entity.DeliveryAttempt;
 import com.hookrelay.core.entity.DeliveryStatus;
 import com.hookrelay.core.repository.DeliveryAttemptRepository;
 import com.hookrelay.core.repository.DeliveryRepository;
-import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;

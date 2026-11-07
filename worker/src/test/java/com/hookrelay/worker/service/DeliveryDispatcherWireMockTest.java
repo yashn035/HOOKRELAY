@@ -198,9 +198,7 @@ class DeliveryDispatcherWireMockTest {
         assertTrue(signatureHeader.startsWith("t="));
         assertTrue(signatureHeader.contains(",v1="));
 
-        // Extract timestamp from header and verify signature against TRANSFORMED body
-        String[] parts = signatureHeader.split(",");
-        long timestamp = Long.parseLong(parts[0].substring(2));
+        // Verify signature against TRANSFORMED body
         boolean verified = hmacSignatureService.verify(receivedBody, signatureHeader, secret, 300);
         assertTrue(verified, "Signature header must cryptographically verify against the transformed body");
 

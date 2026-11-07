@@ -10,7 +10,6 @@ import com.hookrelay.core.service.HookRelayMetricsService;
 import com.hookrelay.worker.service.DeliveryDispatcher.DispatchResult;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;

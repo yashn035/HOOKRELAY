@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hookrelay.api.dto.EventDtos.IngestEventRequest;
 import com.hookrelay.api.dto.EventDtos.IngestEventResponse;
 import com.hookrelay.api.exception.RateLimitExceededException;
-import com.hookrelay.core.entity.Delivery;
 import com.hookrelay.core.entity.Endpoint;
 import com.hookrelay.core.entity.Event;
 import com.hookrelay.core.entity.Project;

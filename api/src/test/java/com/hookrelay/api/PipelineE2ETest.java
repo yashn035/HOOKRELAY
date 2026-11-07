@@ -25,13 +25,13 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.utility.DockerImageName;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
 import static org.junit.jupiter.api.Assertions.*;
 
+@SuppressWarnings("resource")
 @SpringBootTest(classes = HookRelayApplication.class, properties = {
         "hookrelay.worker.enabled=true",
         "hookrelay.worker.poll-delay-ms=999999999"
@@ -156,7 +156,7 @@ class PipelineE2ETest {
                 .build());
 
         String webhookSecret = "whsec_e2e_secret_key_998127";
-        Endpoint endpoint = endpointRepository.save(Endpoint.builder()
+        endpointRepository.save(Endpoint.builder()
                 .project(project)
                 .name("Wiremock E2E Consumer")
                 .url("http://localhost:" + wireMockServer.port() + endpointPath)
@@ -198,7 +198,6 @@ class PipelineE2ETest {
         verify(1, postRequestedFor(urlEqualTo(endpointPath)));
 
         // - WireMock received X-HookRelay-Signature and it verifies against payload
-        String expectedPayload = eventRepository.findById(eventId).orElseThrow().getData();
         verify(postRequestedFor(urlEqualTo(endpointPath))
                 .withHeader("X-HookRelay-Event-Id", equalTo(eventId.toString()))
                 .withHeader("X-HookRelay-Signature", matching("t=[0-9]+,v1=[a-f0-9]+")));
@@ -260,7 +259,7 @@ class PipelineE2ETest {
                 .build());
 
         String webhookSecret = "whsec_e2e_transform_secret_554433";
-        Endpoint endpoint = endpointRepository.save(Endpoint.builder()
+        endpointRepository.save(Endpoint.builder()
                 .project(project)
                 .name("Wiremock Transformed Consumer")
                 .url("http://localhost:" + wireMockServer.port() + endpointPath)

@@ -15,7 +15,6 @@ import com.hookrelay.core.service.HookRelayMetricsService;
 import com.hookrelay.core.service.IdempotencyService;
 import com.hookrelay.core.service.RateLimitResult;
 import com.hookrelay.core.service.RateLimitService;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;

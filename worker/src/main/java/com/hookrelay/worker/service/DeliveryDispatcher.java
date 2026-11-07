@@ -1,7 +1,6 @@
 package com.hookrelay.worker.service;
 
 import com.hookrelay.core.entity.Delivery;
-import com.hookrelay.core.entity.DeliveryAttempt;
 import com.hookrelay.core.entity.Endpoint;
 import com.hookrelay.core.entity.Event;
 import com.hookrelay.core.service.HmacSignatureService;

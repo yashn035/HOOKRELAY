@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hookrelay.core.entity.*;
 import com.hookrelay.core.repository.*;
 import com.hookrelay.core.service.ApiKeyService;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -96,7 +95,7 @@ public class DemoDataSeeder implements CommandLineRunner {
         Project savedProject = projectRepository.save(project);
 
         // 4. Create Demo API Key
-        ApiKey apiKey = apiKeyService.createDeterministicApiKey(savedProject, "E-Commerce Ingest Service", DEMO_API_KEY);
+        apiKeyService.createDeterministicApiKey(savedProject, "E-Commerce Ingest Service", DEMO_API_KEY);
         log.info("Seeded Demo Tenant API Key: {}", DEMO_API_KEY);
 
         // 5. Create Endpoints

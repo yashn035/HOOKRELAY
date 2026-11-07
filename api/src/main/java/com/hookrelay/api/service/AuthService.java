@@ -10,7 +10,6 @@ import com.hookrelay.core.repository.OrgRepository;
 import com.hookrelay.core.repository.ProjectRepository;
 import com.hookrelay.core.repository.UserRepository;
 import io.jsonwebtoken.Claims;
-import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;

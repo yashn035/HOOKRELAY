@@ -6,9 +6,6 @@ import com.hookrelay.core.entity.Endpoint;
 import com.hookrelay.core.repository.DeliveryAttemptRepository;
 import com.hookrelay.core.repository.DeliveryRepository;
 import com.hookrelay.core.repository.EndpointRepository;
-import com.hookrelay.core.repository.EventRepository;
-import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -20,20 +17,17 @@ import java.util.UUID;
 @Service
 public class DashboardService {
 
-    private final EventRepository eventRepository;
     private final DeliveryRepository deliveryRepository;
     private final DeliveryAttemptRepository deliveryAttemptRepository;
     private final EndpointRepository endpointRepository;
     private final ProjectService projectService;
 
     public DashboardService(
-            EventRepository eventRepository,
             DeliveryRepository deliveryRepository,
             DeliveryAttemptRepository deliveryAttemptRepository,
             EndpointRepository endpointRepository,
             ProjectService projectService
     ) {
-        this.eventRepository = eventRepository;
         this.deliveryRepository = deliveryRepository;
         this.deliveryAttemptRepository = deliveryAttemptRepository;
         this.endpointRepository = endpointRepository;

@@ -1,7 +1,6 @@
 package com.hookrelay.api.config;
 
 import com.hookrelay.api.security.UnifiedAuthFilter;
-import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -51,13 +50,12 @@ public class SecurityConfig {
                                 "/actuator/**",
                                 "/swagger-ui/**",
                                 "/swagger-ui.html",
-                                "/v3/api-docs/**"
-                        ).permitAll()
+                                "/v3/api-docs/**")
+                        .permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/api/v1/events/**").hasAnyRole("TENANT", "INGEST", "USER", "ADMIN")
                         .requestMatchers("/api/v1/**").authenticated()
-                        .anyRequest().permitAll()
-                )
+                        .anyRequest().permitAll())
                 .addFilterBefore(unifiedAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
