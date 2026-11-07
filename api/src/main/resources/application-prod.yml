@@ -8,6 +8,10 @@ spring:
     url: ${SPRING_DATASOURCE_URL:${DATABASE_URL}}
     username: ${SPRING_DATASOURCE_USERNAME:${DATABASE_USERNAME:postgres}}
     password: ${SPRING_DATASOURCE_PASSWORD:${DATABASE_PASSWORD:postgres}}
+    hikari:
+      maximum-pool-size: 50
+      minimum-idle: 10
+      connection-timeout: 20000
 
 logging:
   level:

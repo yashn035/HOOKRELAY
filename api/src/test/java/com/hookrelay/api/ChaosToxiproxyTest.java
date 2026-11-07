@@ -37,7 +37,7 @@ import static org.junit.jupiter.api.Assertions.*;
 })
 @ActiveProfiles("test")
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-class ChaosToxiproxyTest {
+class ChaosToxiproxyTest extends AbstractIntegrationTest {
 
     private static final Logger log = LoggerFactory.getLogger(ChaosToxiproxyTest.class);
 
@@ -78,7 +78,7 @@ class ChaosToxiproxyTest {
     @BeforeAll
     static void setUpAll() {
         // 1. Start dynamic WireMock downstream mock receiver
-        wireMockServer = new WireMockServer(wireMockConfig().dynamicPort());
+        wireMockServer = new WireMockServer(wireMockConfig().bindAddress("0.0.0.0").dynamicPort());
         wireMockServer.start();
         wireMockPort = wireMockServer.port();
         WireMock.configureFor("localhost", wireMockPort);

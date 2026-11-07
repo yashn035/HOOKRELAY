@@ -1,5 +1,6 @@
 import http from 'k6/http';
 import { check, sleep } from 'k6';
+import { textSummary } from 'https://jslib.k6.io/k6-summary/0.1.0/index.js';
 
 /**
  * HookRelay High-Throughput Ingestion Load Test
@@ -108,7 +109,9 @@ export default function () {
 }
 
 export function handleSummary(data) {
+  const json = JSON.stringify(data, null, 2);
   return {
-    'summary.json': JSON.stringify(data, null, 2),
+    'stdout': textSummary(data, { indent: ' ', enableColors: true }),
+    'summary.json': json,
   };
 }
