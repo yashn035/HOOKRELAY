@@ -27,6 +27,16 @@ jobs:
       - name: Run Maven Tests & Verify (JaCoCo + Testcontainers)
         run: mvn -B clean verify
 
+      - name: Dump Surefire Reports on Failure
+        if: failure()
+        run: |
+          for f in $(find . -type f -name "*.txt" | grep surefire-reports); do
+            echo "================================================================"
+            echo "FAILURE REPORT: $f"
+            echo "================================================================"
+            cat "$f"
+          done
+
       - name: Upload JaCoCo Coverage Report
         uses: actions/upload-artifact@v4
         if: always()

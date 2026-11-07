@@ -34,7 +34,9 @@ import static org.junit.jupiter.api.Assertions.*;
 @SuppressWarnings("resource")
 @SpringBootTest(classes = HookRelayApplication.class, properties = {
         "hookrelay.worker.enabled=true",
-        "hookrelay.worker.poll-delay-ms=999999999"
+        "hookrelay.worker.poll-delay-ms=999999999",
+        "hookrelay.security.enforce-https=false",
+        "hookrelay.security.block-private-ips=false"
 })
 @ActiveProfiles("test")
 class PipelineE2ETest {
