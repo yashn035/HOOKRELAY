@@ -31,6 +31,8 @@ public class HookRelayMetricsService {
         meterRegistry.counter("hookrelay.deliveries.attempted", "status", "INITIALIZED");
         meterRegistry.timer("hookrelay.delivery.latency", "endpoint_id", "default");
         meterRegistry.counter("hookrelay.rate_limit.rejected", "tenant_id", "default");
+        meterRegistry.summary("hookrelay.delivery.latency_drift", "endpoint_id", "default");
+        meterRegistry.counter("hookrelay.deliveries.retry_cost", "tenant_id", "default");
         log.info("Registered all custom HookRelay Micrometer metrics on Prometheus registry");
     }
 
@@ -55,5 +57,15 @@ public class HookRelayMetricsService {
     public void recordDeliveryLatency(UUID endpointId, long latencyMs) {
         meterRegistry.timer("hookrelay.delivery.latency", "endpoint_id", endpointId.toString())
                 .record(latencyMs, TimeUnit.MILLISECONDS);
+    }
+
+    public void recordLatencyDrift(UUID endpointId, double driftMs) {
+        meterRegistry.summary("hookrelay.delivery.latency_drift", "endpoint_id", endpointId.toString())
+                .record(driftMs);
+    }
+
+    public void recordRetryCost(UUID tenantId, int attemptNumber) {
+        meterRegistry.counter("hookrelay.deliveries.retry_cost", "tenant_id", tenantId.toString(), "attempt", String.valueOf(attemptNumber))
+                .increment();
     }
 }
