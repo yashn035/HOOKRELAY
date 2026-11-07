@@ -5,6 +5,7 @@ import com.hookrelay.core.entity.Endpoint;
 import com.hookrelay.core.entity.Event;
 import com.hookrelay.core.service.HmacSignatureService;
 import com.hookrelay.core.service.PayloadTransformService;
+import com.hookrelay.core.service.PiiRedactor;
 import com.hookrelay.core.service.SsrfProtectionService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -24,6 +25,7 @@ public class DeliveryDispatcher {
     private final HmacSignatureService hmacSignatureService;
     private final SsrfProtectionService ssrfProtectionService;
     private final PayloadTransformService payloadTransformService;
+    private final PiiRedactor piiRedactor;
     private final HttpClient httpClient;
 
     private static final Duration TIMEOUT = Duration.ofSeconds(10);
@@ -32,16 +34,26 @@ public class DeliveryDispatcher {
     public DeliveryDispatcher(
             HmacSignatureService hmacSignatureService,
             SsrfProtectionService ssrfProtectionService,
-            PayloadTransformService payloadTransformService
+            PayloadTransformService payloadTransformService,
+            PiiRedactor piiRedactor
     ) {
         this.hmacSignatureService = hmacSignatureService;
         this.ssrfProtectionService = ssrfProtectionService;
         this.payloadTransformService = payloadTransformService;
+        this.piiRedactor = piiRedactor != null ? piiRedactor : new PiiRedactor();
         this.httpClient = HttpClient.newBuilder()
                 .version(HttpClient.Version.HTTP_1_1)
                 .connectTimeout(Duration.ofSeconds(5))
                 .followRedirects(HttpClient.Redirect.NEVER) // Prevent SSRF redirect hijacking
                 .build();
+    }
+
+    public DeliveryDispatcher(
+            HmacSignatureService hmacSignatureService,
+            SsrfProtectionService ssrfProtectionService,
+            PayloadTransformService payloadTransformService
+    ) {
+        this(hmacSignatureService, ssrfProtectionService, payloadTransformService, new PiiRedactor());
     }
 
     public record DispatchResult(
@@ -103,6 +115,9 @@ public class DeliveryDispatcher {
             boolean success = (statusCode >= 200 && statusCode < 300);
 
             String body = response.body();
+            if (body != null) {
+                body = piiRedactor.redact(body);
+            }
             if (body != null && body.length() > MAX_RESPONSE_BODY_LENGTH) {
                 body = body.substring(0, MAX_RESPONSE_BODY_LENGTH) + "... [truncated]";
             }

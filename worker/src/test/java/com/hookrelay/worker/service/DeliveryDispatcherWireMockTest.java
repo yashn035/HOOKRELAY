@@ -206,4 +206,48 @@ class DeliveryDispatcherWireMockTest {
         boolean rawVerified = hmacSignatureService.verify(event.getData(), signatureHeader, secret, 300);
         assertFalse(rawVerified, "Signature header must NOT verify against untransformed raw body");
     }
+
+    @Test
+    @DisplayName("Should redact PII from subscriber response body before returning DispatchResult")
+    void testResponseBodyPiiRedacted() {
+        String endpointPath = "/pii-response-webhook";
+        stubFor(post(urlEqualTo(endpointPath))
+                .willReturn(aResponse()
+                        .withStatus(200)
+                        .withHeader("Content-Type", "application/json")
+                        .withBody("{\"error\": \"User card 4532-1111-2222-3333 or email john.doe@example.com was rejected\"}")));
+
+        Project project = Project.builder().name("PII Project").build();
+        project.setId(UUID.randomUUID());
+
+        Endpoint endpoint = Endpoint.builder()
+                .project(project)
+                .name("PII Receiver")
+                .url("http://localhost:" + wireMockServer.port() + endpointPath)
+                .secret("whsec_pii_secret_123")
+                .build();
+        endpoint.setId(UUID.randomUUID());
+
+        Event event = Event.builder()
+                .project(project)
+                .type("user.signup")
+                .data("{\"userId\": \"u1\"}")
+                .build();
+        event.setId(UUID.randomUUID());
+
+        Delivery delivery = Delivery.builder()
+                .project(project)
+                .endpoint(endpoint)
+                .event(event)
+                .build();
+        delivery.setId(UUID.randomUUID());
+
+        DispatchResult result = dispatcher.dispatch(delivery);
+        assertTrue(result.successful());
+        assertNotNull(result.responseBody());
+        assertFalse(result.responseBody().contains("john.doe@example.com"));
+        assertFalse(result.responseBody().contains("4532-1111-2222-3333"));
+        assertTrue(result.responseBody().contains("[REDACTED_EMAIL]"));
+        assertTrue(result.responseBody().contains("[REDACTED_CREDIT_CARD]"));
+    }
 }
