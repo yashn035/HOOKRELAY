@@ -84,6 +84,13 @@ services:
       HOOKRELAY_BLOCK_PRIVATE_IPS: "false"
     command: ["java", "-jar", "/app/app.jar", "--spring.profiles.active=worker"]
 
+  toxiproxy:
+    image: ghcr.io/shopify/toxiproxy:2.9.0
+    container_name: hookrelay-toxiproxy
+    ports:
+      - "8474:8474"
+      - "8666:8666"
+
   web:
     build:
       context: ./web

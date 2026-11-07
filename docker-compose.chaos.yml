@@ -1,0 +1,97 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: hookrelay-chaos-postgres
+    environment:
+      POSTGRES_DB: hookrelay
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d hookrelay"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: hookrelay-chaos-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  wiremock:
+    image: wiremock/wiremock:3.9.1
+    container_name: hookrelay-chaos-wiremock
+    ports:
+      - "8089:8080"
+    command: ["--verbose"]
+
+  toxiproxy:
+    image: ghcr.io/shopify/toxiproxy:2.9.0
+    container_name: hookrelay-chaos-toxiproxy
+    depends_on:
+      - wiremock
+    ports:
+      - "8474:8474" # Toxiproxy HTTP Management API
+      - "8666:8666" # Proxied Downstream Port forwarded to WireMock
+    command: ["-host=0.0.0.0"]
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: hookrelay-chaos-api
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      toxiproxy:
+        condition: service_started
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/hookrelay
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: password
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: super-secret-key-32-bytes-minimum-hookrelay-production-dev!
+      HOOKRELAY_ENFORCE_HTTPS: "false"
+      HOOKRELAY_BLOCK_PRIVATE_IPS: "false"
+      HOOKRELAY_WORKER_ENABLED: "false"
+      HOOKRELAY_SEED_ENABLED: "true"
+    ports:
+      - "8080:8080"
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: hookrelay-chaos-worker
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      toxiproxy:
+        condition: service_started
+    environment:
+      SPRING_PROFILES_ACTIVE: worker
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/hookrelay
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: password
+      REDIS_URL: redis://redis:6379
+      HOOKRELAY_WORKER_ENABLED: "true"
+      HOOKRELAY_WORKER_POLL_DELAY_MS: "1000"
+      HOOKRELAY_WORKER_THREADS: "5"
+      HOOKRELAY_ENFORCE_HTTPS: "false"
+      HOOKRELAY_BLOCK_PRIVATE_IPS: "false"
+    command: ["java", "-jar", "/app/app.jar", "--spring.profiles.active=worker"]
+
