@@ -119,9 +119,6 @@ class PipelineE2ETest {
     private EndpointRepository endpointRepository;
 
     @Autowired
-    private EventRepository eventRepository;
-
-    @Autowired
     private DeliveryRepository deliveryRepository;
 
     @Autowired

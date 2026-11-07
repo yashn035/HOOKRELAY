@@ -28,7 +28,7 @@ import static com.github.tomakehurst.wiremock.client.WireMock.*;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
 import static org.junit.jupiter.api.Assertions.*;
 
-@SuppressWarnings("deprecation")
+@SuppressWarnings({"deprecation", "resource"})
 @SpringBootTest(classes = HookRelayApplication.class, properties = {
         "hookrelay.worker.enabled=true",
         "hookrelay.worker.poll-delay-ms=999999999",
@@ -42,6 +42,7 @@ class ChaosToxiproxyTest {
     private static final Logger log = LoggerFactory.getLogger(ChaosToxiproxyTest.class);
 
     private static WireMockServer wireMockServer;
+    private static Network network;
     private static ToxiproxyContainer toxiproxyContainer;
     private static ToxiproxyContainer.ContainerProxy proxy;
     private static boolean useDockerToxiproxy = false;
@@ -85,7 +86,7 @@ class ChaosToxiproxyTest {
         // 2. Determine if Docker is available for Testcontainers Toxiproxy
         try {
             if (DockerClientFactory.instance().isDockerAvailable()) {
-                Network network = Network.newNetwork();
+                network = Network.newNetwork();
                 toxiproxyContainer = new ToxiproxyContainer("ghcr.io/shopify/toxiproxy:2.9.0")
                         .withNetwork(network);
                 toxiproxyContainer.start();
@@ -111,6 +112,11 @@ class ChaosToxiproxyTest {
         }
         if (toxiproxyContainer != null) {
             toxiproxyContainer.stop();
+        }
+        if (network != null) {
+            try {
+                network.close();
+            } catch (Exception ignored) {}
         }
     }
 
