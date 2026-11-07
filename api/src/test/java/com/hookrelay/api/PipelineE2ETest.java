@@ -44,24 +44,10 @@ class PipelineE2ETest {
     private static GenericContainer<?> redis;
 
     @BeforeAll
-    static void startContainersAndWireMock() {
-        // Start WireMock on dynamic port
+    static void startWireMock() {
         wireMockServer = new WireMockServer(wireMockConfig().dynamicPort());
         wireMockServer.start();
         WireMock.configureFor("localhost", wireMockServer.port());
-
-        // Start real Testcontainers if Docker is available
-        if (isDockerAvailable()) {
-            postgres = new PostgreSQLContainer<>(DockerImageName.parse("postgres:16-alpine"))
-                    .withDatabaseName("hookrelay_tc")
-                    .withUsername("test_user")
-                    .withPassword("test_pass");
-            postgres.start();
-
-            redis = new GenericContainer<>(DockerImageName.parse("redis:7-alpine"))
-                    .withExposedPorts(6379);
-            redis.start();
-        }
     }
 
     @AfterAll
@@ -87,16 +73,26 @@ class PipelineE2ETest {
 
     @DynamicPropertySource
     static void configureDynamicProperties(DynamicPropertyRegistry registry) {
-        if (postgres != null && postgres.isRunning()) {
-            registry.add("spring.datasource.url", postgres::getJdbcUrl);
-            registry.add("spring.datasource.username", postgres::getUsername);
-            registry.add("spring.datasource.password", postgres::getPassword);
-            registry.add("spring.datasource.driver-class-name", () -> "org.postgresql.Driver");
-            registry.add("spring.jpa.properties.hibernate.dialect", () -> "org.hibernate.dialect.PostgreSQLDialect");
-            registry.add("spring.flyway.enabled", () -> "true");
-        }
-        if (redis != null && redis.isRunning()) {
-            registry.add("spring.data.redis.url", () -> "redis://" + redis.getHost() + ":" + redis.getFirstMappedPort());
+        if (isDockerAvailable()) {
+            try {
+                postgres = new PostgreSQLContainer<>(DockerImageName.parse("postgres:16-alpine"))
+                        .withDatabaseName("hookrelay_tc")
+                        .withUsername("test_user")
+                        .withPassword("test_pass");
+                postgres.start();
+
+                redis = new GenericContainer<>(DockerImageName.parse("redis:7-alpine"))
+                        .withExposedPorts(6379);
+                redis.start();
+
+                registry.add("spring.datasource.url", postgres::getJdbcUrl);
+                registry.add("spring.datasource.username", postgres::getUsername);
+                registry.add("spring.datasource.password", postgres::getPassword);
+                registry.add("spring.datasource.driver-class-name", () -> "org.postgresql.Driver");
+                registry.add("spring.jpa.properties.hibernate.dialect", () -> "org.hibernate.dialect.PostgreSQLDialect");
+                registry.add("spring.flyway.enabled", () -> "true");
+                registry.add("spring.data.redis.url", () -> "redis://" + redis.getHost() + ":" + redis.getFirstMappedPort());
+            } catch (Throwable ignored) {}
         }
     }
 

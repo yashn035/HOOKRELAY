@@ -83,7 +83,11 @@ class ChaosToxiproxyTest {
         wireMockPort = wireMockServer.port();
         WireMock.configureFor("localhost", wireMockPort);
 
-        // 2. Determine if Docker is available for Testcontainers Toxiproxy
+        // Configure healthcheck probe stub
+        stubFor(get(urlEqualTo("/healthcheck-probe"))
+                .willReturn(aResponse().withStatus(200).withBody("OK")));
+
+        // 2. Determine if Docker and host-bridge are available for Testcontainers Toxiproxy
         try {
             if (DockerClientFactory.instance().isDockerAvailable()) {
                 network = Network.newNetwork();
@@ -94,13 +98,29 @@ class ChaosToxiproxyTest {
                 // WireMock runs on host machine, bridge into container host
                 org.testcontainers.Testcontainers.exposeHostPorts(wireMockPort);
                 proxy = toxiproxyContainer.getProxy("host.testcontainers.internal", wireMockPort);
-                useDockerToxiproxy = true;
-                log.info("Testcontainers Toxiproxy successfully booted. Downstream proxy port: {}", proxy.getProxyPort());
+
+                // Verify the container-to-host bridge actually routes requests
+                java.net.http.HttpClient client = java.net.http.HttpClient.newBuilder()
+                        .connectTimeout(java.time.Duration.ofSeconds(2))
+                        .build();
+                java.net.http.HttpRequest probe = java.net.http.HttpRequest.newBuilder()
+                        .uri(java.net.URI.create("http://" + proxy.getContainerIpAddress() + ":" + proxy.getProxyPort() + "/healthcheck-probe"))
+                        .timeout(java.time.Duration.ofSeconds(2))
+                        .GET()
+                        .build();
+                java.net.http.HttpResponse<String> resp = client.send(probe, java.net.http.HttpResponse.BodyHandlers.ofString());
+                if (resp.statusCode() == 200) {
+                    useDockerToxiproxy = true;
+                    log.info("Testcontainers Toxiproxy host-bridge verified. Downstream proxy port: {}", proxy.getProxyPort());
+                } else {
+                    useDockerToxiproxy = false;
+                }
             } else {
                 log.warn("Docker is not available in current environment. Using simulated WireMock toxics for chaos validation.");
+                useDockerToxiproxy = false;
             }
         } catch (Throwable t) {
-            log.warn("Toxiproxy Testcontainers setup skipped due to environment: {}", t.getMessage());
+            log.warn("Toxiproxy Testcontainers host-bridge unavailable ({}). Using simulated WireMock toxics for chaos validation.", t.getMessage());
             useDockerToxiproxy = false;
         }
     }
