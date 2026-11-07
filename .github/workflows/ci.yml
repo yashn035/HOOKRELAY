@@ -34,6 +34,20 @@ jobs:
           name: jacoco-coverage-report
           path: core/target/site/jacoco/
 
+      - name: Set up Python for Contract Testing
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install QA Contract Test Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r qa-tests/requirements.txt
+
+      - name: Run OpenAPI Contract Tests
+        run: |
+          pytest qa-tests
+
       - name: Build Backend Docker Image
         run: docker build -t hookrelay:ci .
 

@@ -10,6 +10,9 @@ import com.hookrelay.core.entity.Project;
 import com.hookrelay.core.repository.EventRepository;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -41,6 +44,11 @@ public class EventController {
             summary = "Publish and ingest a webhook event",
             description = "Validates API key, applies tenant token bucket rate limiting, verifies idempotency, persists event, and fans out deliveries.",
             security = {@SecurityRequirement(name = "BearerAuth"), @SecurityRequirement(name = "ApiKeyAuth")}
+    )
+    @ApiResponse(
+            responseCode = "202",
+            description = "Event accepted for asynchronous delivery",
+            content = @Content(schema = @Schema(implementation = IngestEventResponse.class))
     )
     public ResponseEntity<IngestEventResponse> publishEvent(
             Authentication authentication,
