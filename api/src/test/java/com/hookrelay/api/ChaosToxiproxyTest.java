@@ -37,7 +37,7 @@ import static org.junit.jupiter.api.Assertions.*;
 })
 @ActiveProfiles("test")
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-class ChaosToxiproxyTest extends AbstractIntegrationTest {
+public class ChaosToxiproxyTest extends AbstractIntegrationTest {
 
     private static final Logger log = LoggerFactory.getLogger(ChaosToxiproxyTest.class);
 

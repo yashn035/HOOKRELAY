@@ -17,12 +17,6 @@ import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
-import org.testcontainers.DockerClientFactory;
-import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.utility.DockerImageName;
 
 import java.util.List;
 import java.util.UUID;
@@ -31,7 +25,6 @@ import static com.github.tomakehurst.wiremock.client.WireMock.*;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
 import static org.junit.jupiter.api.Assertions.*;
 
-@SuppressWarnings("resource")
 @SpringBootTest(classes = HookRelayApplication.class, properties = {
         "hookrelay.worker.enabled=true",
         "hookrelay.worker.poll-delay-ms=999999999",
@@ -39,7 +32,7 @@ import static org.junit.jupiter.api.Assertions.*;
         "hookrelay.security.block-private-ips=false"
 })
 @ActiveProfiles("test")
-class PipelineE2ETest extends AbstractIntegrationTest {
+public class PipelineE2ETest extends AbstractIntegrationTest {
 
     private static WireMockServer wireMockServer;
 
