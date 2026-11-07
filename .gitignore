@@ -37,10 +37,20 @@ web/.next/
 web/out/
 web/build/
 web/.env*.local
+web/test-results/
+web/playwright-report/
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+### Testing & QA ###
+.pytest_cache/
+__pycache__/
+*.pyc
+regression-tests/__pycache__/
+qa-tests/.pytest_cache/
+qa-tests/__pycache__/
 
 ### OS ###
 .DS_Store
