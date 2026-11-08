@@ -14,7 +14,7 @@
 
 ## Live Links & Demo
 
-- **Web Dashboard**: [https://hookrelay-web.vercel.app](https://hookrelay-web.vercel.app)
+- **Web Dashboard**: [https://hookrelay.vercel.app](https://hookrelay.vercel.app)
 - **API Base URL**: [https://hookrelay-api-hnwm.onrender.com](https://hookrelay-api-hnwm.onrender.com)
 - **Swagger / OpenAPI**: [https://hookrelay-api-hnwm.onrender.com/swagger-ui.html](https://hookrelay-api-hnwm.onrender.com/swagger-ui.html)
 - **Prometheus Metrics**: [https://hookrelay-api-hnwm.onrender.com/actuator/prometheus](https://hookrelay-api-hnwm.onrender.com/actuator/prometheus)
