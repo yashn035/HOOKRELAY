@@ -17,3 +17,4 @@ echo - API Health:    http://localhost:8080/health
 echo - Swagger UI:    http://localhost:8080/swagger-ui.html
 echo - Credentials:   admin@hookrelay.dev / password123!
 echo ========================================================
+

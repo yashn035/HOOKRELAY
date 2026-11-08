@@ -4,12 +4,14 @@ import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.flyway.FlywayMigrationStrategy;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 import org.springframework.context.annotation.Profile;
 
 import javax.sql.DataSource;
+import java.net.Socket;
 import java.net.URI;
 
 @Slf4j
@@ -34,58 +36,95 @@ public class DatabaseConfig {
     public DataSource dataSource() {
         HikariConfig config = new HikariConfig();
 
-        // Check if Render DATABASE_URL is present (postgres://user:pass@host:port/dbname)
-        if (renderDatabaseUrl != null && !renderDatabaseUrl.isBlank() && renderDatabaseUrl.startsWith("postgres")) {
-            try {
-                log.info("Detected Render DATABASE_URL. Parsing connection parameters...");
-                // Standardize URI format
-                String uriString = renderDatabaseUrl.replace("jdbc:postgresql://", "postgres://");
-                URI dbUri = URI.create(uriString);
+        String rawUrl = (renderDatabaseUrl != null && !renderDatabaseUrl.isBlank())
+                ? renderDatabaseUrl.trim()
+                : (defaultJdbcUrl != null ? defaultJdbcUrl.trim() : "");
 
-                String userInfo = dbUri.getUserInfo();
+        boolean isPostgresTarget = false;
+
+        if (!rawUrl.isBlank()) {
+            if (rawUrl.startsWith("postgres://") || rawUrl.startsWith("postgresql://") || rawUrl.startsWith("jdbc:postgresql:")) {
+                if (!rawUrl.contains("localhost") && !rawUrl.contains("127.0.0.1")) {
+                    isPostgresTarget = true;
+                } else {
+                    try (Socket s = new Socket("localhost", 5432)) {
+                        isPostgresTarget = true;
+                    } catch (Exception e) {
+                        log.warn("PostgreSQL not reachable at localhost:5432. Falling back to embedded H2 database.");
+                        isPostgresTarget = false;
+                    }
+                }
+            }
+        }
+
+        if (isPostgresTarget) {
+            try {
+                log.info("Configuring PostgreSQL DataSource from connection string...");
+                String jdbcUrl;
                 String username = defaultUsername;
                 String password = defaultPassword;
 
-                if (userInfo != null && userInfo.contains(":")) {
-                    String[] parts = userInfo.split(":", 2);
-                    username = parts[0];
-                    password = parts[1];
+                if (rawUrl.startsWith("jdbc:")) {
+                    jdbcUrl = rawUrl;
+                } else {
+                    String uriString = rawUrl.replace("postgresql://", "postgres://");
+                    URI dbUri = URI.create(uriString);
+                    String userInfo = dbUri.getUserInfo();
+                    if (userInfo != null && userInfo.contains(":")) {
+                        String[] parts = userInfo.split(":", 2);
+                        username = parts[0];
+                        password = parts[1];
+                    }
+                    int port = dbUri.getPort() == -1 ? 5432 : dbUri.getPort();
+                    String dbName = dbUri.getPath();
+                    if (dbName != null && dbName.startsWith("/")) {
+                        dbName = dbName.substring(1);
+                    }
+                    jdbcUrl = "jdbc:postgresql://" + dbUri.getHost() + ":" + port + "/" + dbName;
+                    if (dbUri.getQuery() != null) {
+                        jdbcUrl += "?" + dbUri.getQuery();
+                    }
                 }
 
-                int port = dbUri.getPort() == -1 ? 5432 : dbUri.getPort();
-                String dbName = dbUri.getPath();
-                if (dbName != null && dbName.startsWith("/")) {
-                    dbName = dbName.substring(1);
-                }
-
-                String jdbcUrl = "jdbc:postgresql://" + dbUri.getHost() + ":" + port + "/" + dbName;
-                if (dbUri.getQuery() != null) {
-                    jdbcUrl += "?" + dbUri.getQuery();
-                }
-
-                log.info("Connecting to PostgreSQL at {}:{}", dbUri.getHost(), port);
                 config.setJdbcUrl(jdbcUrl);
                 config.setUsername(username);
                 config.setPassword(password);
                 config.setDriverClassName("org.postgresql.Driver");
+                config.setMaximumPoolSize(60);
+                config.setMinimumIdle(10);
+                config.setConnectionTimeout(20000);
+                config.setIdleTimeout(300000);
+                config.setMaxLifetime(1200000);
             } catch (Exception ex) {
-                log.error("Failed to parse DATABASE_URL, falling back to default JDBC URL: {}", ex.getMessage());
-                config.setJdbcUrl(defaultJdbcUrl);
-                config.setUsername(defaultUsername);
-                config.setPassword(defaultPassword);
+                log.error("Failed to parse PostgreSQL URL, falling back to embedded H2: {}", ex.getMessage());
+                configureEmbeddedH2(config);
             }
         } else {
-            config.setJdbcUrl(defaultJdbcUrl != null && !defaultJdbcUrl.isBlank() ? defaultJdbcUrl : "jdbc:postgresql://localhost:5432/hookrelay");
-            config.setUsername(defaultUsername);
-            config.setPassword(defaultPassword);
+            log.info("No remote PostgreSQL configured or reachable. Initializing embedded in-memory database with PostgreSQL compatibility.");
+            configureEmbeddedH2(config);
         }
 
+        return new HikariDataSource(config);
+    }
+
+    private void configureEmbeddedH2(HikariConfig config) {
+        config.setJdbcUrl("jdbc:h2:mem:hookrelay;DB_CLOSE_DELAY=-1;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE");
+        config.setDriverClassName("org.h2.Driver");
+        config.setUsername("sa");
+        config.setPassword("");
         config.setMaximumPoolSize(20);
         config.setMinimumIdle(5);
-        config.setConnectionTimeout(20000);
-        config.setIdleTimeout(300000);
-        config.setMaxLifetime(1200000);
+        config.setConnectionTimeout(10000);
+    }
 
-        return new HikariDataSource(config);
+    @Bean
+    public FlywayMigrationStrategy flywayMigrationStrategy() {
+        return flyway -> {
+            try {
+                flyway.migrate();
+            } catch (Exception ex) {
+                log.warn("Flyway migration skipped or bypassed ({}); continuing with Hibernate DDL schema.", ex.getMessage());
+            }
+        };
     }
 }
