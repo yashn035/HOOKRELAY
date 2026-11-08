@@ -37,16 +37,20 @@ public class DatabaseConfig {
     public DataSource dataSource() {
         HikariConfig config = new HikariConfig();
 
-        // Priority 1: If spring.datasource.url is explicitly provided (and not the default localhost), use it
-        // Priority 2: Render's DATABASE_URL environment variable
+        // Priority 1: If spring.datasource.url is explicitly provided (and not a placeholder/localhost), use it
+        // Priority 2: Render's DATABASE_URL environment variable (from linked Postgres)
         // Priority 3: Fallback spring.datasource.url (e.g. localhost or in-memory)
         String rawUrl = "";
-        if (defaultJdbcUrl != null && !defaultJdbcUrl.isBlank() && !defaultJdbcUrl.contains("localhost:5432/hookrelay")) {
+        if (isValidRemoteUrl(defaultJdbcUrl)) {
+            log.info("Using explicit spring.datasource.url for database connection.");
             rawUrl = defaultJdbcUrl.trim();
-        } else if (renderDatabaseUrl != null && !renderDatabaseUrl.isBlank()) {
+        } else if (isValidRemoteUrl(renderDatabaseUrl)) {
+            log.info("Using DATABASE_URL from Render environment for database connection.");
             rawUrl = renderDatabaseUrl.trim();
-        } else if (defaultJdbcUrl != null && !defaultJdbcUrl.isBlank()) {
+        } else if (defaultJdbcUrl != null && !defaultJdbcUrl.isBlank() && !defaultJdbcUrl.contains("<")) {
             rawUrl = defaultJdbcUrl.trim();
+        } else if (renderDatabaseUrl != null && !renderDatabaseUrl.isBlank() && !renderDatabaseUrl.contains("<")) {
+            rawUrl = renderDatabaseUrl.trim();
         }
 
         boolean isPostgresTarget = false;
@@ -101,11 +105,11 @@ public class DatabaseConfig {
                     }
                 }
 
-                // If explicit username/password are injected (e.g. from SPRING_DATASOURCE_USERNAME)
-                if (defaultUsername != null && !defaultUsername.isBlank() && !defaultUsername.equals("postgres")) {
+                // If explicit username/password are injected and not placeholder templates
+                if (defaultUsername != null && !defaultUsername.isBlank() && !defaultUsername.equals("postgres") && !defaultUsername.contains("<")) {
                     username = defaultUsername;
                 }
-                if (defaultPassword != null && !defaultPassword.isBlank() && !defaultPassword.equals("postgres")) {
+                if (defaultPassword != null && !defaultPassword.isBlank() && !defaultPassword.equals("postgres") && !defaultPassword.contains("<")) {
                     password = defaultPassword;
                 }
 
@@ -128,6 +132,21 @@ public class DatabaseConfig {
         }
 
         return new HikariDataSource(config);
+    }
+
+    private boolean isValidRemoteUrl(String url) {
+        if (url == null || url.isBlank()) {
+            return false;
+        }
+        String trimmed = url.trim();
+        // Reject unreplaced template placeholders like <HOST> or <DATABASE_NAME>
+        if (trimmed.contains("<") || trimmed.contains(">")) {
+            return false;
+        }
+        if (trimmed.contains("localhost") || trimmed.contains("127.0.0.1")) {
+            return false;
+        }
+        return trimmed.startsWith("jdbc:postgresql:") || trimmed.startsWith("postgres://") || trimmed.startsWith("postgresql://");
     }
 
     private void configureEmbeddedH2(HikariConfig config) {
