@@ -14,7 +14,7 @@ start "HookRelay Frontend (Port 3000)" cmd /k "cd /d "%~dp0web" && npm run dev"
 echo.
 echo ========================================================
 echo Launching in 2 separate terminal windows:
-echo - Frontend:    http://localhost:3000
+echo - Frontend:    http://localhost:3000 (or http://localhost:3001 if 3000 is in use)
 echo - Backend API: http://localhost:8080
 echo - Credentials: admin@hookrelay.dev / password123!
 echo ========================================================

@@ -5,9 +5,10 @@ spring:
   flyway:
     enabled: true
   datasource:
-    url: ${SPRING_DATASOURCE_URL:${DATABASE_URL}}
+    url: ${SPRING_DATASOURCE_URL:${DATABASE_URL:}}
     username: ${SPRING_DATASOURCE_USERNAME:${DATABASE_USERNAME:postgres}}
     password: ${SPRING_DATASOURCE_PASSWORD:${DATABASE_PASSWORD:postgres}}
+    driver-class-name: org.postgresql.Driver
     hikari:
       maximum-pool-size: 60
       minimum-idle: 10

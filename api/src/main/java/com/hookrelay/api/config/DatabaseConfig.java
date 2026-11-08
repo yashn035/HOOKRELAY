@@ -12,18 +12,13 @@ import org.springframework.context.annotation.Profile;
 
 import javax.sql.DataSource;
 import java.net.Socket;
-import java.net.URI;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 
 @Slf4j
 @Configuration
 @Profile("!test")
 public class DatabaseConfig {
-
-    private static final Pattern PG_URL_PATTERN = Pattern.compile(
-            "^(?:postgres(?:ql)?://|jdbc:postgresql://)(?:([^:]+):([^@]+)@)?([^:/]+)(?::(\\d+))?/(.+)$"
-    );
 
     @Value("${DATABASE_URL:}")
     private String renderDatabaseUrl;
@@ -42,9 +37,17 @@ public class DatabaseConfig {
     public DataSource dataSource() {
         HikariConfig config = new HikariConfig();
 
-        String rawUrl = (renderDatabaseUrl != null && !renderDatabaseUrl.isBlank())
-                ? renderDatabaseUrl.trim()
-                : (defaultJdbcUrl != null ? defaultJdbcUrl.trim() : "");
+        // Priority 1: If spring.datasource.url is explicitly provided (and not the default localhost), use it
+        // Priority 2: Render's DATABASE_URL environment variable
+        // Priority 3: Fallback spring.datasource.url (e.g. localhost or in-memory)
+        String rawUrl = "";
+        if (defaultJdbcUrl != null && !defaultJdbcUrl.isBlank() && !defaultJdbcUrl.contains("localhost:5432/hookrelay")) {
+            rawUrl = defaultJdbcUrl.trim();
+        } else if (renderDatabaseUrl != null && !renderDatabaseUrl.isBlank()) {
+            rawUrl = renderDatabaseUrl.trim();
+        } else if (defaultJdbcUrl != null && !defaultJdbcUrl.isBlank()) {
+            rawUrl = defaultJdbcUrl.trim();
+        }
 
         boolean isPostgresTarget = false;
 
@@ -73,37 +76,28 @@ public class DatabaseConfig {
                 if (rawUrl.startsWith("jdbc:")) {
                     jdbcUrl = rawUrl;
                 } else {
-                    try {
-                        String uriString = rawUrl.replace("postgresql://", "postgres://");
-                        URI dbUri = URI.create(uriString);
-                        String userInfo = dbUri.getUserInfo();
-                        if (userInfo != null && userInfo.contains(":")) {
-                            String[] parts = userInfo.split(":", 2);
-                            username = parts[0];
-                            password = parts[1];
-                        }
-                        int port = dbUri.getPort() == -1 ? 5432 : dbUri.getPort();
-                        String dbName = dbUri.getPath();
-                        if (dbName != null && dbName.startsWith("/")) {
-                            dbName = dbName.substring(1);
-                        }
-                        jdbcUrl = "jdbc:postgresql://" + dbUri.getHost() + ":" + port + "/" + dbName;
-                        if (dbUri.getQuery() != null) {
-                            jdbcUrl += "?" + dbUri.getQuery();
-                        }
-                    } catch (Exception uriEx) {
-                        log.warn("Standard URI parsing threw ({}), attempting regex parsing...", uriEx.getMessage());
-                        Matcher matcher = PG_URL_PATTERN.matcher(rawUrl);
-                        if (matcher.matches()) {
-                            if (matcher.group(1) != null) username = matcher.group(1);
-                            if (matcher.group(2) != null) password = matcher.group(2);
-                            String host = matcher.group(3);
-                            String port = matcher.group(4) != null ? matcher.group(4) : "5432";
-                            String dbAndQuery = matcher.group(5);
-                            jdbcUrl = "jdbc:postgresql://" + host + ":" + port + "/" + dbAndQuery;
+                    // Safe parser for postgres:// or postgresql:// connection strings
+                    String withoutScheme = rawUrl;
+                    if (withoutScheme.startsWith("postgresql://")) {
+                        withoutScheme = withoutScheme.substring("postgresql://".length());
+                    } else if (withoutScheme.startsWith("postgres://")) {
+                        withoutScheme = withoutScheme.substring("postgres://".length());
+                    }
+
+                    int atIndex = withoutScheme.lastIndexOf('@');
+                    if (atIndex != -1) {
+                        String creds = withoutScheme.substring(0, atIndex);
+                        String hostAndPath = withoutScheme.substring(atIndex + 1);
+                        int colon = creds.indexOf(':');
+                        if (colon != -1) {
+                            username = URLDecoder.decode(creds.substring(0, colon), StandardCharsets.UTF_8);
+                            password = URLDecoder.decode(creds.substring(colon + 1), StandardCharsets.UTF_8);
                         } else {
-                            throw uriEx;
+                            username = URLDecoder.decode(creds, StandardCharsets.UTF_8);
                         }
+                        jdbcUrl = "jdbc:postgresql://" + hostAndPath;
+                    } else {
+                        jdbcUrl = "jdbc:postgresql://" + withoutScheme;
                     }
                 }
 
