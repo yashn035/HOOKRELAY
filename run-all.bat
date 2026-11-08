@@ -1,20 +1,20 @@
 @echo off
 title HookRelay Development Environment
+cd /d "%~dp0"
+
 echo ========================================================
 echo Starting HookRelay Development Environment
 echo ========================================================
 echo.
-echo [1/2] Starting Spring Boot API Backend (Port: 8080, Profile: dev)...
-start "HookRelay API (Port 8080)" cmd /k ".\mvnw.cmd spring-boot:run -pl api "-Dspring-boot.run.profiles=dev""
+echo [1/2] Starting Spring Boot API Backend (Port: 8080)...
+start "HookRelay API (Port 8080)" cmd /k "cd /d "%~dp0" && .\mvnw.cmd spring-boot:run -pl api -Dspring-boot.run.profiles=dev"
 echo.
 echo [2/2] Starting Next.js Web Dashboard (Port: 3000)...
-start "HookRelay Frontend (Port 3000)" cmd /k "cd web && npm run dev"
+start "HookRelay Frontend (Port 3000)" cmd /k "cd /d "%~dp0web" && npm run dev"
 echo.
 echo ========================================================
-echo Servers are launching in separate terminal windows:
-echo - Web Dashboard: http://localhost:3000
-echo - API Health:    http://localhost:8080/health
-echo - Swagger UI:    http://localhost:8080/swagger-ui.html
-echo - Credentials:   admin@hookrelay.dev / password123!
+echo Launching in 2 separate terminal windows:
+echo - Frontend:    http://localhost:3000
+echo - Backend API: http://localhost:8080
+echo - Credentials: admin@hookrelay.dev / password123!
 echo ========================================================
-
