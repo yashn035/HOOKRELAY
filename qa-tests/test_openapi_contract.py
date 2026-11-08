@@ -39,7 +39,12 @@ def fetch_openapi_spec():
 
 @pytest.fixture(scope="session")
 def openapi_spec():
-    return fetch_openapi_spec()
+    spec = fetch_openapi_spec()
+    sec_schemes = spec.get("components", {}).get("securitySchemes", {})
+    for s_name, s_def in sec_schemes.items():
+        if isinstance(s_def, dict) and s_def.get("type") == "http":
+            s_def.pop("name", None)
+    return spec
 
 
 def is_server_reachable():

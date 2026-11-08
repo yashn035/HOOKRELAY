@@ -62,7 +62,6 @@ public class OpenApiConfig {
                         .license(new License().name("Apache 2.0").url("https://www.apache.org/licenses/LICENSE-2.0")))
                 .components(new Components()
                         .addSecuritySchemes("BearerAuth", new SecurityScheme()
-                                .name("BearerAuth")
                                 .type(SecurityScheme.Type.HTTP)
                                 .scheme("bearer")
                                 .bearerFormat("JWT")
