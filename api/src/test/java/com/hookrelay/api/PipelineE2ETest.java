@@ -50,6 +50,14 @@ public class PipelineE2ETest extends AbstractIntegrationTest {
         }
     }
 
+    @BeforeEach
+    void resetWiremock() {
+        if (wireMockServer != null && wireMockServer.isRunning()) {
+            WireMock.configureFor("localhost", wireMockServer.port());
+            wireMockServer.resetAll();
+        }
+    }
+
     @Autowired
     private EventIngestService eventIngestService;
 

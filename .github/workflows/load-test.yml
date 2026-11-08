@@ -63,8 +63,8 @@ jobs:
         run: |
           python scripts/assert_slo.py summary.json
         env:
-          MAX_P99_MS: "5000.0"
-          MAX_ERROR_RATE: "0.10"
+          MAX_P99_MS: "1000.0"
+          MAX_ERROR_RATE: "0.01"
 
       - name: Upload k6 Summary Artifact
         uses: actions/upload-artifact@v4

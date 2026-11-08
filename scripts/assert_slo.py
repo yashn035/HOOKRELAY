@@ -61,8 +61,8 @@ def verify_slos(summary_file_path: str) -> bool:
     
     p99_str = f"{p99:.2f} ms" if p99 is not None else "N/A"
     err_pct_str = f"{(error_rate * 100):.2f} %"
-    max_p99 = float(os.environ.get("MAX_P99_MS", "5000.0"))
-    max_error_rate = float(os.environ.get("MAX_ERROR_RATE", "0.10"))
+    max_p99 = float(os.environ.get("MAX_P99_MS", "1000.0"))
+    max_error_rate = float(os.environ.get("MAX_ERROR_RATE", "0.01"))
     print(f"P99 Latency:              {p99_str} (SLO Target: <= {max_p99:.2f} ms)")
     print(f"Error Rate:               {err_pct_str} (SLO Target: <= {(max_error_rate * 100):.2f} %)")
     print("-" * 64)

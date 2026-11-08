@@ -141,6 +141,14 @@ public class ChaosToxiproxyTest extends AbstractIntegrationTest {
     }
 
     @BeforeEach
+    void resetWiremock() {
+        if (wireMockServer != null && wireMockServer.isRunning()) {
+            WireMock.configureFor("localhost", wireMockPort);
+            wireMockServer.resetAll();
+        }
+    }
+
+    @BeforeEach
     void setupTestData() {
         if (testOrg == null) {
             testOrg = orgRepository.save(Org.builder()
