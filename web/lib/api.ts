@@ -1,4 +1,5 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+const rawBaseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+const API_BASE_URL = rawBaseUrl.trim().replace(/\/+$/, "");
 
 export class ApiError extends Error {
   status: number;

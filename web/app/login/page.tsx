@@ -11,15 +11,22 @@ export default function LoginPage() {
   const [email, setEmail] = useState("admin@hookrelay.dev");
   const [password, setPassword] = useState("password123!");
   const [loading, setLoading] = useState(false);
+  const [slowLoading, setSlowLoading] = useState(false);
   const [error, setError] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setSlowLoading(false);
     setError("");
+
+    const timeout = setTimeout(() => {
+      setSlowLoading(true);
+    }, 4000);
 
     try {
       const res = await api.login({ email, password });
+      clearTimeout(timeout);
       setToken(res.token);
       localStorage.setItem("hookrelay_user", JSON.stringify(res.user));
       if (res.defaultProjectId) {
@@ -27,15 +34,18 @@ export default function LoginPage() {
       }
       router.push("/dashboard");
     } catch (err: any) {
+      clearTimeout(timeout);
       setError(err.message || "Failed to authenticate. Please check your credentials.");
     } finally {
       setLoading(false);
+      setSlowLoading(false);
     }
   };
 
   const handleDemoFill = () => {
     setEmail("admin@hookrelay.dev");
     setPassword("password123!");
+    setError("");
   };
 
   return (
@@ -55,6 +65,21 @@ export default function LoginPage() {
             <span>{error}</span>
           </div>
         )}
+
+        {/* Demo Credentials Quick-Fill Banner */}
+        <div className="p-3 rounded-xl bg-slate-900/60 border border-emerald-500/20 flex items-center justify-between text-xs">
+          <div className="space-y-0.5">
+            <span className="text-slate-400 font-medium">Demo Credentials</span>
+            <div className="text-emerald-400 font-mono text-[11px]">admin@hookrelay.dev / password123!</div>
+          </div>
+          <button
+            type="button"
+            onClick={handleDemoFill}
+            className="px-2.5 py-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 font-medium text-xs border border-emerald-500/30 transition-all"
+          >
+            Fill Demo
+          </button>
+        </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
@@ -92,7 +117,13 @@ export default function LoginPage() {
             disabled={loading}
             className="w-full py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-semibold text-sm transition-all shadow-lg shadow-emerald-500/20 disabled:opacity-50 flex items-center justify-center space-x-2"
           >
-            <span>{loading ? "Authenticating..." : "Sign In"}</span>
+            <span>
+              {loading
+                ? slowLoading
+                  ? "Waking up cloud backend (Render)..."
+                  : "Authenticating..."
+                : "Sign In"}
+            </span>
             <ArrowRight className="w-4 h-4" />
           </button>
         </form>
