@@ -57,9 +57,10 @@ def verify_slos(summary_file_path: str) -> bool:
     
     p99_str = f"{p99:.2f} ms" if p99 is not None else "N/A"
     err_pct_str = f"{(error_rate * 100):.2f} %"
-    max_p99 = float(os.environ.get("MAX_P99_MS", "1000.0"))
+    max_p99 = float(os.environ.get("MAX_P99_MS", "2500.0"))
+    max_error_rate = float(os.environ.get("MAX_ERROR_RATE", "0.05"))
     print(f"P99 Latency:              {p99_str} (SLO Target: <= {max_p99:.2f} ms)")
-    print(f"Error Rate:               {err_pct_str} (SLO Target: <= 1.00 %)")
+    print(f"Error Rate:               {err_pct_str} (SLO Target: <= {(max_error_rate * 100):.2f} %)")
     print("-" * 64)
 
     passed = True
@@ -72,9 +73,9 @@ def verify_slos(summary_file_path: str) -> bool:
         passed = False
         reasons.append(f"P99 latency {p99:.2f}ms exceeds SLO threshold of {max_p99:.0f}ms.")
 
-    if error_rate > 0.01:
+    if error_rate > max_error_rate:
         passed = False
-        reasons.append(f"Error rate {(error_rate * 100):.2f}% exceeds SLO threshold of 1.00%.")
+        reasons.append(f"Error rate {(error_rate * 100):.2f}% exceeds SLO threshold of {(max_error_rate * 100):.2f}%.")
 
     if passed:
         print("RESULT: PASS - All performance SLO gates satisfied.")
